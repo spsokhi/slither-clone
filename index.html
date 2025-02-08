@@ -48,7 +48,7 @@
         #playerName {
             padding: 12px 20px;
             font-size: 1.1rem;
-            margin-bottom: 1.5rem;
+            margin-bottom: 0.75rem;
             width: 250px;
             border: 2px solid #00ff00;
             border-radius: 25px;
@@ -65,14 +65,14 @@
         #difficultySelect {
             padding: 12px 20px;
             font-size: 1.1rem;
-            margin-bottom: 1.5rem;
+            margin-bottom: 0.75rem;
             width: 250px;
             border: 2px solid #00ff00;
             border-radius: 25px;
             background: rgba(0, 0, 0, 0.5);
             color: #fff;
             transition: all 0.3s;
-            appearance: none; /* Remove default arrow */
+            appearance: none;
             -webkit-appearance: none;
             -moz-appearance: none;
             cursor: pointer;
@@ -83,6 +83,49 @@
         }
 
         #difficultySelect:focus {
+            outline: none;
+            box-shadow: 0 0 15px rgba(0, 255, 0, 0.3);
+        }
+
+        #gameModeSelect {
+            padding: 12px 20px;
+            font-size: 1.1rem;
+            margin-bottom: 0.75rem;
+            width: 250px;
+            border: 2px solid #00ff00;
+            border-radius: 25px;
+            background: rgba(0, 0, 0, 0.5);
+            color: #fff;
+            transition: all 0.3s;
+            appearance: none;
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            cursor: pointer;
+            background-image: url('data:image/svg+xml;utf8,<svg fill="white" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 4 5"><path d="M2 0L0 2h4L2 0z"/></svg>');
+            background-repeat: no-repeat;
+            background-position-x: 95%;
+            background-position-y: 50%;
+        }
+
+        #gameModeSelect:focus {
+            outline: none;
+            box-shadow: 0 0 15px rgba(0, 255, 0, 0.3);
+        }
+
+        #snakeColor {
+            padding: 12px 20px;
+            font-size: 1.1rem;
+            margin-bottom: 1.5rem;
+            width: 250px;
+            border: 2px solid #00ff00;
+            border-radius: 25px;
+            background: rgba(0, 0, 0, 0.5);
+            color: #fff;
+            transition: all 0.3s;
+            cursor: pointer;
+        }
+
+        #snakeColor:focus {
             outline: none;
             box-shadow: 0 0 15px rgba(0, 255, 0, 0.3);
         }
@@ -113,7 +156,20 @@
             border-radius: 10px;
             box-shadow: 0 0 30px rgba(0, 255, 0, 0.2);
             cursor: crosshair; /* Ensure custom cursor on canvas */
+            position: absolute; /* Required for layering */
+            top: 0;
+            left: 0;
+            z-index: 1;
         }
+
+        /* Style the background canvas */
+        #backgroundCanvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            z-index: 0; /* Ensure it's behind the main canvas */
+        }
+
 
         #rankingSystem {
             position: fixed;
@@ -220,10 +276,17 @@
         <option value="normal" selected>Normal</option>
         <option value="hard">Hard</option>
     </select>
+    <select id="gameModeSelect">
+        <option value="survival">Survival</option>
+        <option value="scoreAttack">Score Attack</option>
+        <option value="kingOfTheHill">King of the Hill</option>
+    </select>
+    <input type="color" id="snakeColor" value="#00ff00">
     <button id="playButton"><i class="fas fa-play"></i> START GAME</button>
 </div>
 
 <!-- Game Canvas -->
+<canvas id="backgroundCanvas"></canvas>
 <canvas id="gameCanvas"></canvas>
 
 <!-- Death Screen -->
@@ -247,9 +310,13 @@
     const startScreen = document.getElementById('startScreen');
     const playerNameInput = document.getElementById('playerName');
     const difficultySelect = document.getElementById('difficultySelect');
+    const gameModeSelect = document.getElementById('gameModeSelect');
+    const snakeColorInput = document.getElementById('snakeColor');
     const playButton = document.getElementById('playButton');
     const canvas = document.getElementById('gameCanvas');
+    const backgroundCanvas = document.getElementById('backgroundCanvas');
     const ctx = canvas.getContext('2d');
+    const backgroundCtx = backgroundCanvas.getContext('2d');
     const deathScreen = document.querySelector('.death-screen');
     const restartButton = document.getElementById('restartButton');
     const leaderboardList = document.getElementById('leaderboard');
@@ -257,6 +324,8 @@
     // Set canvas dimensions
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
+    backgroundCanvas.width = window.innerWidth;
+    backgroundCanvas.height = window.innerHeight;
 
     // Game variables
     const world = {width: 4000, height: 4000};
@@ -267,7 +336,10 @@
     let score = 0;
     let gameLoopID;
     let particles = [];
-    let difficulty = 'normal'; // Default difficulty
+    let difficulty = 'normal';
+    let gameMode = 'survival';
+    let snakeColor = '#00ff00';
+    let aiAggression = 1; // Scale for AI aggression
 
     // Mouse position
     let mouseX = 0;
@@ -288,7 +360,11 @@
         if (gameLoopID) cancelAnimationFrame(gameLoopID);
         particles = [];
         deathScreen.style.display = 'none';
-        difficulty = difficultySelect.value; // Get selected difficulty
+
+        // Get selected values
+        difficulty = difficultySelect.value;
+        gameMode = gameModeSelect.value;
+        snakeColor = snakeColorInput.value;
 
         // Reset game state
         player = {
@@ -301,7 +377,7 @@
             dy: 0,
             tail: [],
             length: 5,
-            color: '#00ff00',
+            color: snakeColor,
             glow: true
         };
 
@@ -310,27 +386,46 @@
         score = 0;
 
         // Generate initial elements
-        for (let i = 0; i < 100; i++) spawnFood(); // Increased initial food
+        for (let i = 0; i < 100; i++) spawnFood();
         for (let i = 0; i < 10; i++) spawnAISnake(aiNames[i]);
+
+        // Initialize background
+        drawBackground();
+
+        // Difficulty scaling
+        aiAggression = difficulty === 'easy' ? 0.5 : (difficulty === 'hard' ? 1.5 : 1);
 
         // Show game elements
         startScreen.style.display = 'none';
         canvas.style.display = 'block';
+        backgroundCanvas.style.display = 'block';
         gameLoop();
     }
 
-    function spawnFood() {
+    function spawnFood(type = 'normal') {
+        let size = 12;
+        let color = `hsl(${Math.random() * 360}, 70%, 60%)`;
+
+        if (type === 'length') {
+            size = 18;
+            color = '#00ffff';
+        } else if (type === 'poison') {
+            size = 10;
+            color = '#ff00ff';
+        }
+
         foods.push({
             x: Math.random() * world.width,
             y: Math.random() * world.height,
-            size: 8,
-            color: `hsl(${Math.random() * 360}, 70%, 60%)`
+            size: size,
+            color: color,
+            type: type
         });
     }
 
     function spawnAISnake(name) {
-        const snakeSpeed = difficulty === 'hard' ? 4 : 3; // Adjust speed by difficulty
-        aiSnakes.push({
+        const snakeSpeed = difficulty === 'hard' ? 4 : 3;
+        const aiSnake = {
             name: name,
             x: Math.random() * world.width,
             y: Math.random() * world.height,
@@ -342,8 +437,12 @@
             length: 5,
             color: `hsl(${Math.random() * 360}, 70%, 50%)`,
             glow: false,
-            target: null // Added target property for chasing other snakes or avoiding player
-        });
+            target: null,
+            attackCooldown: 0,
+            personality: Math.random() // 0-1, higher = more aggressive
+        };
+
+        aiSnakes.push(aiSnake);
     }
 
     // Mouse movement handling
@@ -371,25 +470,28 @@
         player.tail.push({x: player.x, y: player.y});
         if (player.tail.length > player.length) player.tail.shift();
 
-        // AI movement
+        // AI movement and behavior
         aiSnakes.forEach(snake => {
-            // AI behavior based on difficulty
-            if (difficulty === 'hard') {
-                // Hard: Target smallest snake
-                snake.target = findSmallestSnake();
-                if (snake.target) {
-                    moveTowards(snake, snake.target);
-                } else {
-                    // If no smaller snake, target food
-                    const target = findClosestFood(snake);
-                    moveTowards(snake, target);
-                }
+            // Reduce attack cooldown
+            if (snake.attackCooldown > 0) {
+                snake.attackCooldown--;
+            }
 
+            // Determine target based on difficulty
+            let target = null;
+            const attackMode = shouldAttack(snake);
+
+            if (attackMode === 'player') {
+                target = player;
+            } else if (attackMode === 'smallerSnake') {
+                target = findSmallestSnake(snake); // Find a smaller snake to attack
             } else {
-                // Normal/Easy: Target food and avoid player
-                const target = findClosestFood(snake);
+                target = findClosestFood(snake); // Default: target food
+            }
+
+            // Move towards the target (either food or another snake)
+            if (target) {
                 moveTowards(snake, target);
-                avoidPlayer(snake);
             }
 
             snake.x += snake.dx;
@@ -403,6 +505,7 @@
         checkFoodCollision();
         checkSnakeCollisions();
         updateLeaderboard();
+        updateGameMode();
 
         // Camera update
         camera.x = player.x - canvas.width / 2;
@@ -412,9 +515,8 @@
     }
 
     function draw() {
-        // Background
-        ctx.fillStyle = '#1a1a1a';
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        // Clear canvas
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
 
         // Draw food
         foods.forEach(food => {
@@ -461,12 +563,21 @@
 
         // Draw custom pointer
         drawCustomPointer(mouseX, mouseY);
+
+        if (gameMode === 'kingOfTheHill') {
+            ctx.fillText(`King: ${kingSnake ? kingSnake.name : "None"}`, 20, 65);
+        }
     }
 
     function gameLoop() {
         update();
         draw();
         gameLoopID = requestAnimationFrame(gameLoop);
+    }
+
+    function drawBackground() {
+        backgroundCtx.fillStyle = '#1a1a1a'; // Simple dark background
+        backgroundCtx.fillRect(0, 0, backgroundCanvas.width, backgroundCanvas.height);
     }
 
     // Helper functions
@@ -483,24 +594,63 @@
         foods = foods.filter(food => {
             if (distance(player, food) < player.size / 2 + food.size / 2) {
                 createParticles(food.x, food.y, food.color);
-                player.length += 2;
+
+                if (food.type === 'length') {
+                    player.length += 5; // Larger length increase
+                } else if (food.type === 'poison') {
+                    player.length -= 3; // Get shorter
+                    if (player.length < 1) {
+                        // Handle game over
+                        deathScreen.style.display = 'block';
+                        document.getElementById('finalScore').textContent = `Score: ${score}`;
+                        cancelAnimationFrame(gameLoopID);
+                        return false; // Stop further processing
+                    }
+                } else {
+                    player.length += 2;
+                }
+
                 score += 10;
                 return false;
             }
 
-            for (let i = 0; i < aiSnakes.length; i++) { // Use a loop to avoid issues with filter and forEach
+            for (let i = 0; i < aiSnakes.length; i++) {
                 const snake = aiSnakes[i];
                 if (distance(snake, food) < snake.size / 2 + food.size / 2) {
-                    snake.length += 2;
-                    return false; // Food is eaten
+                    createParticles(food.x, food.y, food.color);
+
+                    if (food.type === 'length') {
+                        snake.length += 5; // Larger length increase
+                    } else if (food.type === 'poison') {
+                        snake.length -= 3;
+                        if (snake.length < 1) {
+                            // Handle AI death
+                            aiSnakes.splice(i, 1); // Remove dead snake
+                            spawnAISnake(aiNames[Math.floor(Math.random() * aiNames.length)]); // Respawn
+                            return false;
+                        }
+                    } else {
+                        snake.length += 2;
+                    }
+
+                    return false;
                 }
             }
 
-            return true; // Food remains
+            return true;
         });
 
-        const foodSpawnRate = difficulty === 'easy' ? 70 : 100; // Adjust spawn rate
-        while (foods.length < foodSpawnRate) spawnFood();
+        const foodSpawnRate = difficulty === 'easy' ? 70 : 100;
+        while (foods.length < foodSpawnRate) {
+            const rand = Math.random();
+            if (rand < 0.05) {
+                spawnFood('length'); // 5% chance of length food
+            } else if (rand < 0.1) {
+                spawnFood('poison'); // 5% chance of poison food
+            } else {
+                spawnFood();
+            }
+        }
     }
 
     function checkSnakeCollisions() {
@@ -569,21 +719,69 @@
 
     function avoidPlayer(snake) {
         const distanceToPlayer = distance(snake, player);
-        if (distanceToPlayer < 200) { // Adjust range as needed
+        if (distanceToPlayer < 200) {
             const dx = snake.x - player.x;
             const dy = snake.y - player.y;
             const angle = Math.atan2(dy, dx);
 
-            snake.dx = Math.cos(angle) * snake.speed; // Move away
+            snake.dx = Math.cos(angle) * snake.speed;
             snake.dy = Math.sin(angle) * snake.speed;
         }
     }
 
-    function findSmallestSnake() {
-        if (aiSnakes.length === 0) return null;
-        return aiSnakes.reduce((smallest, snake) =>
-                snake.length < smallest.length ? snake : smallest
-            , aiSnakes[0]);
+    function findSmallestSnake(attacker) {
+        let smallest = null;
+        let minDistance = Infinity;
+
+        aiSnakes.forEach(potentialTarget => {
+            if (potentialTarget !== attacker && potentialTarget.length < attacker.length) {
+                const dist = distance(attacker, potentialTarget);
+                if (dist < minDistance) {
+                    smallest = potentialTarget;
+                    minDistance = dist;
+                }
+            }
+        });
+
+        return smallest;
+    }
+
+    function shouldAttack(snake) {
+        if (snake.attackCooldown > 0) {
+            return null; // On cooldown, do nothing
+        }
+
+        const rand = Math.random();
+        let baseAggression = snake.personality * aiAggression; // Use personality and difficulty
+
+        switch (difficulty) {
+            case 'easy':
+                if (rand < 0.05 * baseAggression && distance(snake, player) < 300) {
+                    snake.attackCooldown = 150;
+                    return 'player';
+                }
+                return null;
+
+            case 'normal':
+                if (rand < 0.2 * baseAggression && distance(snake, player) < 400) {
+                    snake.attackCooldown = 100;
+                    return 'player';
+                } else if (rand < 0.1 * baseAggression) {
+                    snake.attackCooldown = 120;
+                    return 'smallerSnake';
+                }
+                return null;
+
+            case 'hard':
+                if (rand < 0.5 * baseAggression && distance(snake, player) < 500) {
+                    snake.attackCooldown = 75;
+                    return 'player';
+                } else if (rand < 0.3 * baseAggression) {
+                    snake.attackCooldown = 90;
+                    return 'smallerSnake';
+                }
+                return null;
+        }
     }
 
     function drawCustomPointer(x, y) {
@@ -603,10 +801,42 @@
         ctx.stroke();
     }
 
+    function updateGameMode() {
+        // kingOfTheHill
+        if (gameMode === 'kingOfTheHill') {
+            // Find the snake with the longest length
+            let currentKing = aiSnakes.reduce((longest, snake) => snake.length > longest.length ? snake : longest, player);
+
+            if (currentKing === player) {
+                // Player is King, skip AI check
+                kingSnake = player;
+            } else {
+                // Check if AI is longer than player
+                if (currentKing.length > player.length) {
+                    kingSnake = currentKing;
+                } else {
+                    kingSnake = player; // Revert to player if no AI is longer
+                }
+            }
+
+            if (kingSnake) {
+                kingTime++;
+            }
+        }
+
+        // Add difficulty scaling
+        if (gameMode === 'survival') {
+            aiAggression = 1 + score / 200;
+        }
+    }
+
     // Window resize handling
     window.addEventListener('resize', () => {
         canvas.width = window.innerWidth;
         canvas.height = window.innerHeight;
+        backgroundCanvas.width = window.innerWidth;
+        backgroundCanvas.height = window.innerHeight;
+        drawBackground();
     });
 </script>
 </body>
