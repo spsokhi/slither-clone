@@ -61,6 +61,32 @@
       box-shadow: 0 0 15px rgba(0, 255, 0, 0.3);
     }
 
+    #difficultySelect {
+      padding: 12px 20px;
+      font-size: 1.1rem;
+      margin-bottom: 1.5rem;
+      width: 250px;
+      border: 2px solid #00ff00;
+      border-radius: 25px;
+      background: rgba(0, 0, 0, 0.5);
+      color: #fff;
+      transition: all 0.3s;
+      appearance: none; /* Remove default arrow */
+      -webkit-appearance: none;
+      -moz-appearance: none;
+      cursor: pointer;
+      background-image: url('data:image/svg+xml;utf8,<svg fill="white" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 4 5"><path d="M2 0L0 2h4L2 0z"/></svg>');
+      background-repeat: no-repeat;
+      background-position-x: 95%;
+      background-position-y: 50%;
+    }
+
+    #difficultySelect:focus {
+      outline: none;
+      box-shadow: 0 0 15px rgba(0, 255, 0, 0.3);
+    }
+
+
     #playButton {
       padding: 12px 30px;
       font-size: 1.1rem;
@@ -187,6 +213,11 @@
   <div id="startScreen" class="screen">
     <h1>NEON SLITHER</h1>
     <input type="text" id="playerName" placeholder="Enter your name" maxlength="15" required>
+    <select id="difficultySelect">
+      <option value="easy">Easy</option>
+      <option value="normal" selected>Normal</option>
+      <option value="hard">Hard</option>
+    </select>
     <button id="playButton"><i class="fas fa-play"></i> START GAME</button>
   </div>
 
@@ -213,6 +244,7 @@
   <script>
     const startScreen = document.getElementById('startScreen');
     const playerNameInput = document.getElementById('playerName');
+    const difficultySelect = document.getElementById('difficultySelect');
     const playButton = document.getElementById('playButton');
     const canvas = document.getElementById('gameCanvas');
     const ctx = canvas.getContext('2d');
@@ -233,6 +265,7 @@
     let score = 0;
     let gameLoopID;
     let particles = [];
+    let difficulty = 'normal'; // Default difficulty
 
     // AI names
     const aiNames = [
@@ -249,7 +282,8 @@
       if (gameLoopID) cancelAnimationFrame(gameLoopID);
       particles = [];
       deathScreen.style.display = 'none';
-      
+      difficulty = difficultySelect.value; // Get selected difficulty
+
       // Reset game state
       player = {
         name: playerNameInput.value.trim() || 'Player',
@@ -270,7 +304,7 @@
       score = 0;
 
       // Generate initial elements
-      for (let i = 0; i < 50; i++) spawnFood();
+      for (let i = 0; i < 100; i++) spawnFood(); // Increased initial food
       for (let i = 0; i < 10; i++) spawnAISnake(aiNames[i]);
 
       // Show game elements
@@ -289,18 +323,20 @@
     }
 
     function spawnAISnake(name) {
+      const snakeSpeed = difficulty === 'hard' ? 4 : 3; // Adjust speed by difficulty
       aiSnakes.push({
         name: name,
         x: Math.random() * world.width,
         y: Math.random() * world.height,
         size: 10,
-        speed: 3,
+        speed: snakeSpeed,
         dx: 0,
         dy: 0,
         tail: [],
         length: 5,
         color: `hsl(${Math.random() * 360}, 70%, 50%)`,
-        glow: false
+        glow: false,
+        target: null // Added target property for chasing other snakes or avoiding player
       });
     }
 
@@ -333,18 +369,25 @@
 
       // AI movement
       aiSnakes.forEach(snake => {
-        const target = foods.reduce((closest, food) => 
-          distance(snake, food) < distance(snake, closest) ? food : closest
-        , foods[0]);
-        
-        if (Math.abs(snake.x - target.x) > Math.abs(snake.y - target.y)) {
-          snake.dx = snake.x < target.x ? snake.speed : -snake.speed;
-          snake.dy = 0;
+        // AI behavior based on difficulty
+        if (difficulty === 'hard') {
+          // Hard: Target smallest snake
+          snake.target = findSmallestSnake();
+          if (snake.target) {
+            moveTowards(snake, snake.target);
+          } else {
+            // If no smaller snake, target food
+            const target = findClosestFood(snake);
+            moveTowards(snake, target);
+          }
+
         } else {
-          snake.dx = 0;
-          snake.dy = snake.y < target.y ? snake.speed : -snake.speed;
+          // Normal/Easy: Target food and avoid player
+          const target = findClosestFood(snake);
+          moveTowards(snake, target);
+          avoidPlayer(snake);
         }
-        
+
         snake.x += snake.dx;
         snake.y += snake.dy;
         wrapAround(snake);
@@ -384,7 +427,7 @@
           ctx.shadowColor = snake.color;
           ctx.shadowBlur = 20;
         }
-        
+
         snake.tail.forEach((segment, index) => {
           const alpha = 1 - (index / snake.tail.length) * 0.7;
           ctx.globalAlpha = alpha;
@@ -392,7 +435,7 @@
           ctx.arc(segment.x - camera.x, segment.y - camera.y, snake.size/2, 0, Math.PI * 2);
           ctx.fill();
         });
-        
+
         ctx.globalAlpha = 1;
         ctx.shadowBlur = 0;
       });
@@ -437,17 +480,20 @@
           score += 10;
           return false;
         }
-        
-        aiSnakes.forEach(snake => {
+
+        for (let i = 0; i < aiSnakes.length; i++) { // Use a loop to avoid issues with filter and forEach
+          const snake = aiSnakes[i];
           if (distance(snake, food) < snake.size/2 + food.size/2) {
             snake.length += 2;
+            return false; // Food is eaten
           }
-        });
-        
-        return true;
+        }
+
+        return true; // Food remains
       });
 
-      while (foods.length < 50) spawnFood();
+      const foodSpawnRate = difficulty === 'easy' ? 70 : 100; // Adjust spawn rate
+      while (foods.length < foodSpawnRate) spawnFood();
     }
 
     function checkSnakeCollisions() {
@@ -461,6 +507,10 @@
                   deathScreen.style.display = 'block';
                   document.getElementById('finalScore').textContent = `Score: ${score}`;
                   cancelAnimationFrame(gameLoopID);
+                } else {
+                  // AI snake dies
+                  aiSnakes = aiSnakes.filter(s => s !== snake); // Remove the dead snake
+                  spawnAISnake(aiNames[Math.floor(Math.random() * aiNames.length)]); // Respawn
                 }
               }
             });
@@ -492,6 +542,41 @@
           <span>${snake.length}</span>
         </li>
       `).join('');
+    }
+
+    // AI Helper functions
+    function findClosestFood(snake) {
+      return foods.reduce((closest, food) =>
+        distance(snake, food) < distance(snake, closest) ? food : closest
+      , foods[0]);
+    }
+
+    function moveTowards(snake, target) {
+      const dx = target.x - snake.x;
+      const dy = target.y - snake.y;
+      const angle = Math.atan2(dy, dx);
+
+      snake.dx = Math.cos(angle) * snake.speed;
+      snake.dy = Math.sin(angle) * snake.speed;
+    }
+
+    function avoidPlayer(snake) {
+      const distanceToPlayer = distance(snake, player);
+      if (distanceToPlayer < 200) { // Adjust range as needed
+        const dx = snake.x - player.x;
+        const dy = snake.y - player.y;
+        const angle = Math.atan2(dy, dx);
+
+        snake.dx = Math.cos(angle) * snake.speed; // Move away
+        snake.dy = Math.sin(angle) * snake.speed;
+      }
+    }
+
+    function findSmallestSnake() {
+      if (aiSnakes.length === 0) return null;
+      return aiSnakes.reduce((smallest, snake) =>
+        snake.length < smallest.length ? snake : smallest
+      , aiSnakes[0]);
     }
 
     // Window resize handling
