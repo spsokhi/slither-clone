@@ -6,13 +6,48 @@
   
   body {
     display: flex;
+    flex-direction: column;
     justify-content: center;
     align-items: center;
     height: 100vh;
-    background-color: #000; /* Black background */
+    background-color: #000;
+    color: #fff;
+    font-family: Arial, sans-serif;
+  }
+  
+  .screen {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    text-align: center;
+  }
+  
+  #startScreen h1 {
+    font-size: 3rem;
+    margin-bottom: 20px;
+  }
+  
+  #startScreen input {
+    padding: 10px;
+    font-size: 1rem;
+    margin-bottom: 20px;
+    width: 200px;
+  }
+  
+  #startScreen button {
+    padding: 10px 20px;
+    font-size: 1rem;
+    cursor: pointer;
   }
   
   canvas {
-    display: block;
-    border: 1px solid #fff; /* Optional: for debugging */
+    display: none; /* Hidden until the game starts */
+    border: 1px solid #fff;
+  }
+  
+  footer {
+    position: absolute;
+    bottom: 10px;
+    font-size: 0.9rem;
   }
