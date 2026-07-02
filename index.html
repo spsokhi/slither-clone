@@ -1,627 +1,1798 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Neon Slither — Patched with Menu</title>
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
-  <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    :root {
-      --neon: #00ff88;
-      --neon-2: #00ff00;
-      --bg1: #111214; --bg2: #1e1f22; --panel: rgba(0,0,0,0.8);
-      --danger: #ff2e63; --warn: #ffd166; --muted: #a0a0a0;
-    }
-    body {
-      height: 100vh; overflow: hidden; display: flex; align-items: center; justify-content: center;
-      background: linear-gradient(45deg, var(--bg1), var(--bg2)); color: #fff;
-      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
-      cursor: crosshair;
-    }
-    .screen {
-      position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-      text-align: center; background: var(--panel); padding: 2rem; border-radius: 16px;
-      box-shadow: 0 0 20px rgba(0, 255, 136, 0.25); backdrop-filter: blur(10px);
-      z-index: 10; min-width: 320px;
-    }
-    #startScreen h1 { font-size: 3rem; margin-bottom: 1rem; color: var(--neon);
-      text-shadow: 0 0 12px rgba(0, 255, 136, 0.6);
-    }
-    .input, .select, .color, .btn {
-      width: 260px; padding: 12px 16px; margin: 0.4rem 0; border-radius: 999px; border: 2px solid var(--neon);
-      background: rgba(0,0,0,0.5); color: #fff; font-size: 1rem; outline: none; transition: .2s ease;
-    }
-    .input:focus, .select:focus, .color:focus { box-shadow: 0 0 16px rgba(0,255,136,.35); }
-    .select {
-      appearance: none; background-image: url('data:image/svg+xml;utf8,<svg fill="white" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 4 5"><path d="M2 0L0 2h4L2 0z"/></svg>');
-      background-repeat: no-repeat; background-position: 93% 50%; cursor: pointer;
-    }
-    .color { cursor: pointer; height: 44px; }
-    .btn { cursor: pointer; background: var(--neon); color: #111; font-weight: 800; text-transform: uppercase; letter-spacing: .06em; border: none; }
-    .btn:hover { transform: translateY(-1px); box-shadow: 0 8px 30px rgba(0, 255, 136, 0.35); }
-    .btn.secondary { background: transparent; color: #fff; border: 2px solid #fff; }
-    .btn.menu { background: #444; color: #fff; border: 2px solid #fff; }
-    .btn.menu:hover { background: #666; }
+ <meta charset="UTF-8">
+ <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+ <title>Neon Slither</title>
+ <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+ <style>
+ * {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+ }
 
-    canvas { position: absolute; top: 0; left: 0; display: none; border-radius: 10px; box-shadow: 0 0 30px rgba(0,255,0,.15); z-index: 1; cursor: crosshair; }
-    #backgroundCanvas { z-index: 0; }
+ body {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+  background: linear-gradient(45deg, #0a0f1a, #05070d);
+  color: #fff;
+  font-family: 'Arial Rounded MT Bold', Arial, sans-serif;
+  overflow: hidden;
+  cursor: crosshair;
+ }
 
-    #rankingSystem { position: fixed; top: 20px; right: 20px; background: rgba(0,0,0,.7);
-      padding: 14px; border-radius: 12px; border: 1px solid var(--neon); min-width: 210px; box-shadow: 0 0 15px rgba(0,255,136,.2); z-index: 4; }
-    #rankingSystem h2 { color: var(--neon); font-size: 1.1rem; margin-bottom: .5rem; display: flex; align-items: center; gap: .5rem; }
-    #leaderboard { list-style: none; }
-    #leaderboard li { display: flex; justify-content: space-between; padding: 6px 10px; margin: 4px 0; background: rgba(255,255,255,.05); border-radius: 6px; font-variant-numeric: tabular-nums; }
-    #leaderboard li.player-entry { background: rgba(0,255,136,.14); font-weight: 700; }
+ .screen {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  text-align: center;
+  background: rgba(0, 0, 0, 0.8);
+  padding: 2rem;
+  border-radius: 15px;
+  box-shadow: 0 0 20px rgba(0, 255, 0, 0.3);
+  backdrop-filter: blur(10px);
+  z-index: 10;
+  max-width: 92vw;
+ }
 
-    .death-screen, #pauseOverlay {
-      display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
-      text-align: center; background: rgba(0,0,0,.9); padding: 2rem 3rem; border-radius: 15px; z-index: 1000;
-    }
-    .death-screen h2 { color: var(--danger); font-size: 2.3rem; margin-bottom: 1rem; text-shadow: 0 0 10px rgba(255, 46, 99, .6); }
-    #finalScore { font-size: 1.2rem; margin-bottom: 1rem; color: #eee; }
-    #pauseOverlay h3 { font-size: 2rem; margin-bottom: .6rem; color: var(--warn); }
-    #pauseOverlay p { color: #ddd; margin-bottom: 1rem; }
-    #pauseOverlay .actions { display: flex; gap: .6rem; justify-content: center; }
+ #startScreen h1 {
+  font-size: 3.5rem;
+  margin-bottom: 1.5rem;
+  color: #00ff00;
+  text-shadow: 0 0 10px rgba(0, 255, 0, 0.5);
+ }
 
-    footer { position: fixed; bottom: 16px; font-size: .9rem; color: var(--muted); z-index: 4; }
-    footer a { color: #bbb; text-decoration: none; }
-    footer a:hover { text-decoration: underline; }
-  </style>
+ #playerName {
+  padding: 12px 20px;
+  font-size: 1.1rem;
+  margin-bottom: 0.75rem;
+  width: 250px;
+  max-width: 78vw;
+  border: 2px solid #00ff00;
+  border-radius: 25px;
+  background: rgba(0, 0, 0, 0.5);
+  color: #fff;
+  transition: all 0.3s;
+ }
+
+ #playerName:focus {
+  outline: none;
+  box-shadow: 0 0 15px rgba(0, 255, 0, 0.3);
+ }
+
+ #difficultySelect,
+ #gameModeSelect {
+  padding: 12px 20px;
+  font-size: 1.1rem;
+  margin-bottom: 0.75rem;
+  width: 250px;
+  max-width: 78vw;
+  border: 2px solid #00ff00;
+  border-radius: 25px;
+  background: rgba(0, 0, 0, 0.5);
+  color: #fff;
+  transition: all 0.3s;
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  cursor: pointer;
+  background-image: url('data:image/svg+xml;utf8,<svg fill="white" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 4 5"><path d="M2 0L0 2h4L2 0z"/></svg>');
+  background-repeat: no-repeat;
+  background-position-x: 95%;
+  background-position-y: 50%;
+ }
+
+ #difficultySelect:focus,
+ #gameModeSelect:focus,
+ #snakeColor:focus {
+  outline: none;
+  box-shadow: 0 0 15px rgba(0, 255, 0, 0.3);
+ }
+
+ #snakeColor {
+  padding: 12px 20px;
+  font-size: 1.1rem;
+  margin-bottom: 1.5rem;
+  width: 250px;
+  max-width: 78vw;
+  border: 2px solid #00ff00;
+  border-radius: 25px;
+  background: rgba(0, 0, 0, 0.5);
+  color: #fff;
+  transition: all 0.3s;
+  cursor: pointer;
+ }
+
+ #playButton {
+  padding: 12px 30px;
+  font-size: 1.1rem;
+  cursor: pointer;
+  background: #00ff00;
+  border: none;
+  border-radius: 25px;
+  color: #1a1a1a;
+  font-weight: bold;
+  transition: all 0.3s;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+ }
+
+ #playButton:hover {
+  background: #00cc00;
+  transform: scale(1.05);
+  box-shadow: 0 0 15px rgba(0, 255, 0, 0.5);
+ }
+
+ .hint {
+  margin-top: 0.8rem;
+  color: #bbb;
+  font-size: 0.85rem;
+ }
+
+ canvas {
+  display: none;
+  border-radius: 10px;
+  box-shadow: 0 0 30px rgba(0, 255, 0, 0.2);
+  cursor: crosshair;
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 1;
+ }
+
+ #backgroundCanvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 0;
+ }
+
+ #rankingSystem {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  background: rgba(0, 0, 0, 0.7);
+  padding: 15px;
+  border-radius: 10px;
+  min-width: 210px;
+  border: 1px solid #00ff00;
+  box-shadow: 0 0 15px rgba(0, 255, 0, 0.2);
+  z-index: 4;
+ }
+
+ #rankingSystem h2 {
+  color: #00ff00;
+  margin-bottom: 10px;
+  font-size: 1.15rem;
+ }
+
+ #leaderboard {
+  list-style: none;
+ }
+
+ #leaderboard li {
+  padding: 6px 10px;
+  margin: 4px 0;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 5px;
+  display: flex;
+  justify-content: space-between;
+  font-variant-numeric: tabular-nums;
+  font-size: 0.95rem;
+ }
+
+ #leaderboard li.player-entry {
+  background: rgba(0, 255, 0, 0.14);
+  font-weight: bold;
+ }
+
+ .death-screen {
+  display: none;
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  text-align: center;
+  background: rgba(0, 0, 0, 0.9);
+  padding: 2rem 3rem;
+  border-radius: 15px;
+  z-index: 1000;
+ }
+
+ .death-screen h2 {
+  color: #ff0000;
+  font-size: 2.5rem;
+  margin-bottom: 1rem;
+  text-shadow: 0 0 10px rgba(255, 0, 0, 0.5);
+ }
+
+ #finalScore {
+  font-size: 1.5rem;
+  margin-bottom: 1.5rem;
+ }
+
+ .menu-btn {
+  padding: 12px 26px;
+  margin: 6px;
+  font-size: 1.05rem;
+  cursor: pointer;
+  background: #00ff00;
+  border: none;
+  border-radius: 25px;
+  color: #1a1a1a;
+  font-weight: bold;
+  transition: all 0.2s;
+  text-transform: uppercase;
+ }
+
+ .menu-btn.secondary {
+  background: transparent;
+  color: #fff;
+  border: 2px solid #fff;
+ }
+
+ .menu-btn.grey {
+  background: #888;
+  color: #111;
+ }
+
+ .menu-btn:hover {
+  transform: scale(1.05);
+  box-shadow: 0 0 15px rgba(0, 255, 0, 0.4);
+ }
+
+ #pauseOverlay {
+  display: none;
+  z-index: 1000;
+  min-width: 340px;
+ }
+
+ #pauseOverlay h2 {
+  color: #ffd166;
+  font-size: 2rem;
+  margin-bottom: 0.6rem;
+  text-shadow: 0 0 10px rgba(255, 209, 102, 0.6);
+ }
+
+ #pauseOverlay p {
+  color: #ddd;
+  margin-bottom: 1.2rem;
+ }
+
+ .btn-row {
+  display: flex;
+  gap: 0.4rem;
+  justify-content: center;
+  flex-wrap: wrap;
+ }
+
+ /* Options overlay */
+ #optionsOverlay {
+  display: none;
+  z-index: 1100;
+  min-width: 360px;
+  max-width: 92vw;
+ }
+
+ #optionsOverlay h2 {
+  color: #00ff88;
+  font-size: 2rem;
+  margin-bottom: 1rem;
+  text-shadow: 0 0 10px rgba(0, 255, 136, 0.5);
+ }
+
+ .opt-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  padding: 8px 4px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+ }
+
+ .opt-row span {
+  font-size: 1rem;
+ }
+
+ .toggle {
+  min-width: 82px;
+  padding: 8px 14px;
+  border-radius: 20px;
+  border: none;
+  font-weight: bold;
+  cursor: pointer;
+  text-transform: uppercase;
+  font-size: 0.85rem;
+  transition: all 0.15s;
+ }
+
+ .toggle.on { background: #00ff88; color: #08121a; }
+ .toggle.off { background: #444; color: #ddd; }
+ .toggle:hover { transform: scale(1.05); }
+
+ .howto {
+  text-align: left;
+  margin: 1rem 0;
+  font-size: 0.9rem;
+  color: #ccc;
+  line-height: 1.5;
+  max-height: 34vh;
+  overflow-y: auto;
+ }
+
+ .howto h3 {
+  color: #ffd166;
+  margin-bottom: 0.5rem;
+ }
+
+ .howto p { margin-bottom: 0.5rem; }
+
+ /* Mobile / on-screen controls */
+ #pauseBtn {
+  position: fixed;
+  top: 14px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 6;
+  display: none;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 2px solid #00ff88;
+  background: rgba(0, 0, 0, 0.55);
+  color: #00ff88;
+  font-size: 1rem;
+  cursor: pointer;
+  align-items: center;
+  justify-content: center;
+ }
+
+ #pauseBtn:hover {
+  background: rgba(0, 255, 136, 0.15);
+ }
+
+ #boostBtn {
+  position: fixed;
+  bottom: 90px;
+  right: 26px;
+  z-index: 6;
+  display: none;
+  width: 84px;
+  height: 84px;
+  border-radius: 50%;
+  border: 2px solid #00ffcc;
+  background: rgba(0, 255, 204, 0.14);
+  color: #00ffcc;
+  font-size: 1.8rem;
+  align-items: center;
+  justify-content: center;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: none;
+ }
+
+ footer {
+  position: fixed;
+  bottom: 20px;
+  font-size: 0.9rem;
+  color: #888;
+  z-index: 4;
+  text-align: center;
+  padding: 0 10px;
+ }
+ </style>
 </head>
+
 <body>
-  <!-- Start Screen -->
-  <div id="startScreen" class="screen">
-    <h1>NEON SLITHER</h1>
-    <input id="playerName" class="input" placeholder="Enter your name" maxlength="15" />
-    <select id="difficultySelect" class="select">
-      <option value="easy">Easy</option>
-      <option value="normal" selected>Normal</option>
-      <option value="hard">Hard</option>
-    </select>
-    <select id="gameModeSelect" class="select">
-      <option value="survival">Survival</option>
-      <option value="scoreAttack">Score Attack</option>
-      <option value="kingOfTheHill">King of the Hill</option>
-    </select>
-    <input type="color" id="snakeColor" class="color" value="#00ff88" />
-    <button id="playButton" class="btn"><i class="fas fa-play"></i> Start Game</button>
-    <p style="margin-top:.6rem; color:#bbb; font-size:.9rem">Mouse to steer • Esc to Pause • R to Restart</p>
+ <!-- Starting Screen -->
+ <div id="startScreen" class="screen">
+  <h1>NEON SLITHER</h1>
+  <input type="text" id="playerName" placeholder="Enter your name" maxlength="15" required>
+  <select id="difficultySelect">
+   <option value="easy">Easy</option>
+   <option value="normal" selected>Normal</option>
+   <option value="hard">Hard</option>
+  </select>
+  <select id="gameModeSelect">
+   <option value="survival">Survival</option>
+   <option value="scoreAttack">Score Attack (60s)</option>
+   <option value="kingOfTheHill">King of the Hill</option>
+   <option value="battleRoyale">Battle Royale</option>
+  </select>
+  <input type="color" id="snakeColor" value="#00ff00">
+  <button id="playButton"><i class="fas fa-play"></i> START GAME</button>
+  <button id="startOptionsBtn" class="menu-btn secondary" style="margin-top:12px;"><i class="fas fa-cog"></i> Options &amp; Help</button>
+  <p class="hint">Mouse to steer &middot; Hold Click / Space to boost &middot; Esc to pause &middot; M to mute</p>
+ </div>
+
+ <!-- Game Canvas -->
+ <canvas id="backgroundCanvas"></canvas>
+ <canvas id="gameCanvas"></canvas>
+
+ <!-- On-screen controls -->
+ <button id="pauseBtn"><i class="fas fa-pause"></i></button>
+ <div id="boostBtn"><i class="fas fa-bolt"></i></div>
+
+ <!-- Death Screen -->
+ <div class="death-screen">
+  <h2>GAME OVER!</h2>
+  <div id="finalScore">Score: 0</div>
+  <div class="btn-row">
+   <button id="restartButton" class="menu-btn"><i class="fas fa-redo"></i> Play Again</button>
+   <button id="menuButton" class="menu-btn grey"><i class="fas fa-home"></i> Main Menu</button>
   </div>
+ </div>
 
-  <!-- Canvases -->
-  <canvas id="backgroundCanvas"></canvas>
-  <canvas id="gameCanvas"></canvas>
-
-  <!-- Death Screen -->
-  <div class="death-screen" id="deathScreen">
-    <h2>GAME OVER!</h2>
-    <div id="finalScore">Score: 0</div>
-    <button id="restartButton" class="btn"><i class="fas fa-redo"></i> Play Again</button>
-    <button id="menuButtonDeath" class="btn menu"><i class="fas fa-home"></i> Main Menu</button>
+ <!-- Pause Overlay -->
+ <div id="pauseOverlay" class="screen">
+  <h2>PAUSED</h2>
+  <p>Press <b>Esc</b> to resume, or use the buttons below.</p>
+  <div class="btn-row">
+   <button id="resumeBtn" class="menu-btn"><i class="fas fa-play"></i> Resume</button>
+   <button id="restartBtn2" class="menu-btn secondary"><i class="fas fa-redo"></i> Restart</button>
+   <button id="pauseOptionsBtn" class="menu-btn secondary"><i class="fas fa-cog"></i> Options</button>
+   <button id="pauseMenuBtn" class="menu-btn grey"><i class="fas fa-home"></i> Main Menu</button>
   </div>
+ </div>
 
-  <!-- Pause Overlay -->
-  <div id="pauseOverlay">
-    <h3>Paused</h3>
-    <p>Press <b>Esc</b> to resume, or use the buttons below.</p>
-    <div class="actions">
-      <button id="resumeBtn" class="btn"><i class="fas fa-play"></i> Resume</button>
-      <button id="restartBtn2" class="btn secondary"><i class="fas fa-redo"></i> Restart</button>
-      <button id="menuButtonPause" class="btn menu"><i class="fas fa-home"></i> Main Menu</button>
-    </div>
+ <!-- Options / Help Overlay -->
+ <div id="optionsOverlay" class="screen">
+  <h2>OPTIONS</h2>
+  <div class="opt-row"><span>Sound</span><button id="optSound" class="toggle"></button></div>
+  <div class="opt-row"><span>Glow effects</span><button id="optGlow" class="toggle"></button></div>
+  <div class="opt-row"><span>Particles</span><button id="optParticles" class="toggle"></button></div>
+  <div class="opt-row"><span>Reduce motion</span><button id="optMotion" class="toggle"></button></div>
+  <div class="howto">
+   <h3>How to play</h3>
+   <p><b>Steer</b> with the mouse/finger. <b>Boost</b> by holding click / Space / the &#9889; button &mdash; it costs length.</p>
+   <p>Eat glowing orbs to grow. Make rival snakes crash into your body to pop them &mdash; but never ram your own head into a body or a red hazard.</p>
+   <p><b>Power-ups:</b> <span style="color:#66aaff">Shield</span> = invincible, <span style="color:#00e5ff">Magnet</span> = pulls food, <span style="color:#ffd24a">2&times;</span> = double score. <span style="color:#ffd24a">Gold</span> food = big points.</p>
+   <p><b>Modes:</b> Survival (endless) &middot; Score Attack (most points in 60s) &middot; King of the Hill (hold the zone 10s) &middot; Battle Royale (survive the shrinking ring &mdash; last snake wins).</p>
   </div>
+  <button id="optClose" class="menu-btn"><i class="fas fa-check"></i> Done</button>
+ </div>
 
-  <!-- Leaderboard -->
-  <div id="rankingSystem">
-    <h2><i class="fas fa-trophy"></i> Leaderboard</h2>
-    <ul id="leaderboard"></ul>
-  </div>
+ <!-- Ranking System -->
+ <div id="rankingSystem">
+  <h2><i class="fas fa-trophy"></i> LEADERBOARD</h2>
+  <ul id="leaderboard"></ul>
+ </div>
 
-  <footer>
-    Made with ❤️ in India by Sukhi | Controls: Mouse / Trackpad | Esc = Pause
-  </footer>
+ <footer>
+  Made with &#10084;&#65039; in India by Sukhi | Mouse &middot; Boost: Click/Space &middot; Esc: Pause &middot; M: Mute
+ </footer>
 
-  <script>
-    // DOM
-    const startScreen = document.getElementById('startScreen');
-    const playerNameInput = document.getElementById('playerName');
-    const difficultySelect = document.getElementById('difficultySelect');
-    const gameModeSelect = document.getElementById('gameModeSelect');
-    const snakeColorInput = document.getElementById('snakeColor');
-    const playButton = document.getElementById('playButton');
-    const canvas = document.getElementById('gameCanvas');
-    const backgroundCanvas = document.getElementById('backgroundCanvas');
-    const ctx = canvas.getContext('2d');
-    const bgCtx = backgroundCanvas.getContext('2d');
-    const deathScreen = document.getElementById('deathScreen');
-    const restartButton = document.getElementById('restartButton');
-    const leaderboardList = document.getElementById('leaderboard');
-    const finalScoreDisplay = document.getElementById('finalScore');
-    const pauseOverlay = document.getElementById('pauseOverlay');
-    const resumeBtn = document.getElementById('resumeBtn');
-    const restartBtn2 = document.getElementById('restartBtn2');
-    const menuButtonDeath = document.getElementById('menuButtonDeath');
-    const menuButtonPause = document.getElementById('menuButtonPause');
+ <script>
+ // ---------- DOM ----------
+ const startScreen = document.getElementById('startScreen');
+ const playerNameInput = document.getElementById('playerName');
+ const difficultySelect = document.getElementById('difficultySelect');
+ const gameModeSelect = document.getElementById('gameModeSelect');
+ const snakeColorInput = document.getElementById('snakeColor');
+ const playButton = document.getElementById('playButton');
+ const canvas = document.getElementById('gameCanvas');
+ const backgroundCanvas = document.getElementById('backgroundCanvas');
+ const ctx = canvas.getContext('2d');
+ const backgroundCtx = backgroundCanvas.getContext('2d');
+ const deathScreen = document.querySelector('.death-screen');
+ const deathTitle = deathScreen.querySelector('h2');
+ const restartButton = document.getElementById('restartButton');
+ const menuButton = document.getElementById('menuButton');
+ const leaderboardList = document.getElementById('leaderboard');
+ const finalScoreDisplay = document.getElementById('finalScore');
+ const pauseOverlay = document.getElementById('pauseOverlay');
+ const resumeBtn = document.getElementById('resumeBtn');
+ const restartBtn2 = document.getElementById('restartBtn2');
+ const pauseMenuBtn = document.getElementById('pauseMenuBtn');
+ const pauseBtn = document.getElementById('pauseBtn');
+ const boostBtn = document.getElementById('boostBtn');
+ const startOptionsBtn = document.getElementById('startOptionsBtn');
+ const pauseOptionsBtn = document.getElementById('pauseOptionsBtn');
+ const optionsOverlay = document.getElementById('optionsOverlay');
+ const optSound = document.getElementById('optSound');
+ const optGlow = document.getElementById('optGlow');
+ const optParticles = document.getElementById('optParticles');
+ const optMotion = document.getElementById('optMotion');
+ const optClose = document.getElementById('optClose');
 
-    // World & Camera
-    const world = { width: 4000, height: 4000 };
-    const camera = { x: 0, y: 0 };
+ // ---------- Config ----------
+ const PI2 = Math.PI * 2;
+ const world = { width: 4000, height: 4000 };
+ const maxAISnakes = 10;
+ const kingOfTheHillDominationTime = 10;
+ const scoreAttackTime = 60;
+ const maxFoods = 400;
+ const SEGMENT_SPACING = 5;
+ const CELL = 220;                 // spatial-grid cell size (px)
+ const SHIELD_DUR = 6, MAGNET_DUR = 7, DOUBLE_DUR = 10;
+ const POWERUP_TYPES = ['magnet', 'shield', 'double'];
+ const isTouch = ('ontouchstart' in window) || navigator.maxTouchPoints > 0;
 
-    // Game State
-    let player = null;
-    let foods = [];
-    let aiSnakes = [];
-    let score = 0;
-    let gameLoopID;
-    let particles = [];
-    let difficulty = 'normal';
-    let gameMode = 'survival';
-    let snakeColor = '#00ff88';
-    let aiAggression = 1; // AI multiplier
-    let kingOfTheHillArea = null;
-    let kingOfTheHillTimer = 0;
-    const kingOfTheHillDominationTime = 10; // seconds
-    const maxAISnakes = 10;
-    let paused = false;
+ // ---------- State ----------
+ let dpr = window.devicePixelRatio || 1;
+ let viewW = window.innerWidth;
+ let viewH = window.innerHeight;
 
-    // Time
-    let lastTime = performance.now();
+ let camera = { x: 0, y: 0 };
+ let zoom = 1, targetZoom = 1;
+ let shake = 0;
+ let player = null;
+ let foods = [];
+ let aiSnakes = [];
+ let particles = [];
+ let popups = [];
+ let powerups = [];
+ let hazards = [];
+ let killFeed = [];
+ let safeZone = null;
+ let foodGrid = new Map();
+ let score = 0;
+ let gameLoopID = null;
+ let running = false;
+ let paused = false;
+ let difficulty = 'normal';
+ let gameMode = 'survival';
+ let snakeColor = '#00ff00';
+ let boosting = false;
+ let frameCount = 0;
+ let liveRank = 1, liveTotal = 1;
 
-    // Mouse
-    let mouseX = 0, mouseY = 0;
+ let kingOfTheHillArea = null;
+ let scoreAttackTimer = scoreAttackTime;
+ let lastTime = 0;
 
-    // AI Names
-    const aiNames = [
-      'SlitherMax','SnekKing','Worminator','PythonPro','CobraCrusher',
-      'ViperVolt','AnacondaAce','BoaBrawler','RattleSnake','NoodleNinja'
-    ];
+ let pendingResult = null;
+ let deathAt = 0;
 
-    // Leaderboard (local persistence)
-    let leaderboard = [];
+ let mouseX = window.innerWidth / 2;
+ let mouseY = window.innerHeight / 2;
 
-    // --- Helpers ---
-    function rand(min, max){ return Math.random() * (max - min) + min; }
-    function distance(x1,y1,x2,y2){ const dx=x1-x2, dy=y1-y2; return Math.hypot(dx,dy); }
-    function wrapAround(o){ if(o.x < 0) o.x = world.width; if(o.x > world.width) o.x=0; if(o.y<0) o.y=world.height; if(o.y>world.height) o.y=0; }
+ let audioCtx = null;
+ let soundOn = true;
+ let useGlow = true;          // shadowBlur effects (perf toggle)
+ let particleScale = 1;       // 1 = high, 0.5 = medium, 0 = off
+ let reduceMotion = false;    // disables screen shake
 
-    // DPI-aware canvas sizing
-    function resizeCanvases(){
-      const dpr = window.devicePixelRatio || 1;
-      for (const c of [canvas, backgroundCanvas]){
-        c.style.width = `${innerWidth}px`;
-        c.style.height = `${innerHeight}px`;
-        c.width = Math.floor(innerWidth * dpr);
-        c.height = Math.floor(innerHeight * dpr);
+ const aiNames = [
+  "SlitherMax", "SnekKing", "Worminator", "PythonPro", "CobraCrusher",
+  "ViperVolt", "AnacondaAce", "BoaBrawler", "RattleSnake", "NoodleNinja"
+ ];
+
+ let leaderboard = [];
+
+ // ---------- Audio ----------
+ function initAudio() {
+  if (!audioCtx) {
+   try { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { audioCtx = null; }
+  }
+  if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+ }
+
+ function sfx(freq, dur = 0.08, type = 'square', vol = 0.05, slideTo = null) {
+  if (!audioCtx || !soundOn) return;
+  const t = audioCtx.currentTime;
+  const o = audioCtx.createOscillator();
+  const g = audioCtx.createGain();
+  o.type = type;
+  o.frequency.setValueAtTime(Math.max(20, freq), t);
+  if (slideTo) o.frequency.exponentialRampToValueAtTime(Math.max(20, slideTo), t + dur);
+  g.gain.setValueAtTime(vol, t);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  o.connect(g); g.connect(audioCtx.destination);
+  o.start(t); o.stop(t + dur);
+ }
+
+ // ---------- Canvas sizing ----------
+ function resizeCanvases() {
+  dpr = window.devicePixelRatio || 1;
+  viewW = window.innerWidth;
+  viewH = window.innerHeight;
+  for (const c of [canvas, backgroundCanvas]) {
+   c.style.width = viewW + 'px';
+   c.style.height = viewH + 'px';
+   c.width = Math.floor(viewW * dpr);
+   c.height = Math.floor(viewH * dpr);
+  }
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  backgroundCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  drawBackground();
+ }
+
+ // ---------- Helpers ----------
+ function distance(x1, y1, x2, y2) { return Math.hypot(x1 - x2, y1 - y2); }
+ function bodyRadius(len) { return 5 + Math.min(14, (len - 5) * 0.09); }
+ function visW() { return viewW / zoom; }
+ function visH() { return viewH / zoom; }
+
+ function clampToWorld(o) {
+  o.x = Math.max(o.size / 2, Math.min(world.width - o.size / 2, o.x));
+  o.y = Math.max(o.size / 2, Math.min(world.height - o.size / 2, o.y));
+ }
+
+ function randomName() { return aiNames[Math.floor(Math.random() * aiNames.length)]; }
+
+ function onScreen(x, y, pad = 80) {
+  return x > camera.x - pad && x < camera.x + visW() + pad &&
+   y > camera.y - pad && y < camera.y + visH() + pad;
+ }
+
+ function toScreen(wx, wy) { return { x: (wx - camera.x) * zoom, y: (wy - camera.y) * zoom }; }
+
+ function turnToward(s, targetAngle, turnRate, dt) {
+  const diff = Math.atan2(Math.sin(targetAngle - s.angle), Math.cos(targetAngle - s.angle));
+  s.angle += diff * Math.min(1, turnRate * dt);
+ }
+
+ function gainScore(n) { return player.doubleTime > 0 ? n * 2 : n; }
+
+ // ---------- Factories ----------
+ function createSnake(name, color, isPlayer) {
+  let x, y, ok = false, tries = 0;
+  do {
+   x = Math.random() * world.width;
+   y = Math.random() * world.height;
+   ok = true;
+   tries++;
+   if (player && distance(player.x, player.y, x, y) < 300) ok = false;
+   if (ok) for (const s of aiSnakes) { if (distance(s.x, s.y, x, y) < 150) { ok = false; break; } }
+  } while (!ok && tries < 50);
+
+  const baseSpeed = isPlayer ? 260
+   : (difficulty === 'hard' ? 215 : (difficulty === 'easy' ? 150 : 180));
+
+  return {
+   name, x, y, size: 10, baseSpeed, speed: baseSpeed,
+   angle: Math.random() * PI2, dx: 0, dy: 0,
+   tail: [], length: 5, color, glow: !!isPlayer,
+   isAlive: true, isPlayer: !!isPlayer,
+   hillTime: 0, wanderAngle: Math.random() * PI2,
+   repathCooldown: 0, boostAcc: 0, targetPos: null,
+   shieldTime: 0, magnetTime: 0, doubleTime: 0
+  };
+ }
+
+ function spawnAISnake(name) {
+  aiSnakes.push(createSnake(name, `hsl(${Math.random() * 360}, 70%, 50%)`, false));
+ }
+
+ function spawnFood(type = 'normal') {
+  if (foods.length >= maxFoods) return;
+  let size = 12;
+  let color = `hsl(${Math.random() * 360}, 70%, 60%)`;
+  if (type === 'length') { size = 18; color = '#00ffff'; }
+  else if (type === 'poison') { size = 10; color = '#ff00ff'; }
+  else if (type === 'golden') { size = 20; color = '#ffd24a'; }
+  foods.push({ x: Math.random() * world.width, y: Math.random() * world.height, size, color, type, eaten: false });
+ }
+
+ function spawnPowerup() {
+  if (powerups.length >= 4) return;
+  const type = POWERUP_TYPES[Math.floor(Math.random() * POWERUP_TYPES.length)];
+  powerups.push({ x: Math.random() * world.width, y: Math.random() * world.height, size: 26, type, pulse: Math.random() * PI2 });
+ }
+
+ function spawnHazards(n) {
+  hazards = [];
+  for (let i = 0; i < n; i++) {
+   let x, y, ok = false, tries = 0;
+   do {
+    x = Math.random() * world.width; y = Math.random() * world.height; ok = true; tries++;
+    if (player && distance(player.x, player.y, x, y) < 450) ok = false;
+    if (ok && gameMode === 'kingOfTheHill' && kingOfTheHillArea && distance(kingOfTheHillArea.x, kingOfTheHillArea.y, x, y) < 420) ok = false;
+   } while (!ok && tries < 40);
+   hazards.push({ x, y, radius: 24 + Math.random() * 20, pulse: Math.random() * PI2 });
+  }
+ }
+
+ function initSafeZone() {
+  safeZone = { x: world.width / 2, y: world.height / 2, radius: 1850, min: 340 };
+ }
+
+ // ---------- Init / navigation ----------
+ function initGame() {
+  initAudio();
+  if (gameLoopID) cancelAnimationFrame(gameLoopID);
+
+  difficulty = difficultySelect.value;
+  gameMode = gameModeSelect.value;
+  snakeColor = snakeColorInput.value;
+  saveSettings();
+
+  particles = []; popups = []; foods = []; aiSnakes = [];
+  powerups = []; hazards = []; killFeed = []; safeZone = null;
+  score = 0; scoreAttackTimer = scoreAttackTime; pendingResult = null;
+  boosting = false; paused = false; shake = 0; zoom = 1; targetZoom = 1;
+  pauseOverlay.style.display = 'none';
+
+  player = createSnake(playerNameInput.value.trim() || 'Player', snakeColor, true);
+  player.angle = 0;
+
+  for (let i = 0; i < 100; i++) spawnFood();
+
+  kingOfTheHillArea = null;
+  if (gameMode === 'kingOfTheHill') {
+   kingOfTheHillArea = {
+    x: Math.random() * (world.width - 800) + 400,
+    y: Math.random() * (world.height - 800) + 400,
+    size: 400
+   };
+  }
+  if (gameMode === 'battleRoyale') initSafeZone();
+
+  let aiCount = maxAISnakes;
+  if (gameMode === 'kingOfTheHill') aiCount = 6;
+  else if (gameMode === 'battleRoyale') aiCount = 12;
+  for (let i = 0; i < aiCount; i++) spawnAISnake(aiNames[i % aiNames.length]);
+
+  // Hazards everywhere except the tight KotH arena
+  if (gameMode === 'kingOfTheHill') spawnHazards(4);
+  else if (gameMode === 'battleRoyale') spawnHazards(7);
+  else spawnHazards(10);
+
+  resizeCanvases();
+  updateCamera();
+
+  deathScreen.style.display = 'none';
+  startScreen.style.display = 'none';
+  canvas.style.display = 'block';
+  backgroundCanvas.style.display = 'block';
+  setMobileControls(true);
+
+  running = true;
+  lastTime = performance.now();
+  gameLoopID = requestAnimationFrame(gameLoop);
+ }
+
+ function goToMainMenu() {
+  running = false; paused = false;
+  if (gameLoopID) cancelAnimationFrame(gameLoopID);
+  gameLoopID = null; pendingResult = null; boosting = false;
+  pauseOverlay.style.display = 'none';
+  deathScreen.style.display = 'none';
+  canvas.style.display = 'none';
+  backgroundCanvas.style.display = 'none';
+  startScreen.style.display = 'block';
+  setMobileControls(false);
+  displayLeaderboard();
+ }
+
+ function setMobileControls(show) {
+  pauseBtn.style.display = show ? 'flex' : 'none';
+  boostBtn.style.display = (show && isTouch) ? 'flex' : 'none';
+ }
+
+ // ---------- Background ----------
+ function drawBackground() {
+  const g = backgroundCtx.createRadialGradient(viewW / 2, viewH / 2, 0, viewW / 2, viewH / 2, Math.max(viewW, viewH) * 0.75);
+  g.addColorStop(0, '#0d1b2a');
+  g.addColorStop(0.55, '#0a0f1a');
+  g.addColorStop(1, '#04060b');
+  backgroundCtx.fillStyle = g;
+  backgroundCtx.fillRect(0, 0, viewW, viewH);
+
+  const nebula = ['rgba(0,255,140,0.07)', 'rgba(0,150,255,0.06)', 'rgba(170,0,255,0.05)'];
+  for (let i = 0; i < 6; i++) {
+   const nx = Math.random() * viewW, ny = Math.random() * viewH, nr = Math.random() * 260 + 160;
+   const ng = backgroundCtx.createRadialGradient(nx, ny, 0, nx, ny, nr);
+   ng.addColorStop(0, nebula[i % nebula.length]);
+   ng.addColorStop(1, 'rgba(0,0,0,0)');
+   backgroundCtx.fillStyle = ng;
+   backgroundCtx.beginPath();
+   backgroundCtx.arc(nx, ny, nr, 0, PI2);
+   backgroundCtx.fill();
+  }
+
+  for (let i = 0; i < 450; i++) {
+   const r = Math.random() * 1.1 + 0.2;
+   backgroundCtx.fillStyle = `rgba(255,255,255,${Math.random() * 0.5 + 0.15})`;
+   backgroundCtx.beginPath();
+   backgroundCtx.arc(Math.random() * viewW, Math.random() * viewH, r, 0, PI2);
+   backgroundCtx.fill();
+  }
+
+  backgroundCtx.shadowColor = '#9fdfff';
+  backgroundCtx.shadowBlur = 8;
+  backgroundCtx.fillStyle = 'rgba(210,235,255,0.9)';
+  for (let i = 0; i < 28; i++) {
+   const r = Math.random() * 1.4 + 1;
+   backgroundCtx.beginPath();
+   backgroundCtx.arc(Math.random() * viewW, Math.random() * viewH, r, 0, PI2);
+   backgroundCtx.fill();
+  }
+  backgroundCtx.shadowBlur = 0;
+ }
+
+ function drawGrid() {
+  const grid = 50, w = visW(), h = visH();
+  ctx.strokeStyle = 'rgba(0, 255, 150, 0.06)';
+  ctx.lineWidth = 1 / zoom;
+  ctx.beginPath();
+  for (let x = Math.floor(camera.x / grid) * grid; x < camera.x + w; x += grid) {
+   ctx.moveTo(x - camera.x, 0); ctx.lineTo(x - camera.x, h);
+  }
+  for (let y = Math.floor(camera.y / grid) * grid; y < camera.y + h; y += grid) {
+   ctx.moveTo(0, y - camera.y); ctx.lineTo(w, y - camera.y);
+  }
+  ctx.stroke();
+
+  ctx.strokeStyle = 'rgba(0, 255, 130, 0.6)';
+  ctx.lineWidth = 4 / zoom;
+  if (useGlow) { ctx.shadowColor = '#00ff88'; ctx.shadowBlur = 20; }
+  ctx.strokeRect(-camera.x, -camera.y, world.width, world.height);
+  ctx.shadowBlur = 0;
+ }
+
+ // ---------- Movement ----------
+ function addTail(s) {
+  let lx, ly;
+  if (s.tail.length) { lx = s.tail[s.tail.length - 1].x; ly = s.tail[s.tail.length - 1].y; }
+  else { s.tail.push({ x: s.x, y: s.y }); lx = s.x; ly = s.y; }
+  let d = distance(lx, ly, s.x, s.y);
+  if (d > 0) {
+   const ang = Math.atan2(s.y - ly, s.x - lx);
+   while (d >= SEGMENT_SPACING) {
+    lx += Math.cos(ang) * SEGMENT_SPACING;
+    ly += Math.sin(ang) * SEGMENT_SPACING;
+    s.tail.push({ x: lx, y: ly });
+    d -= SEGMENT_SPACING;
+   }
+  }
+  const maxLen = Math.max(1, Math.floor(s.length));
+  while (s.tail.length > maxLen) s.tail.shift();
+ }
+
+ function moveSnake(s, dt) {
+  s.size = 2 * bodyRadius(s.length);
+  s.dx = Math.cos(s.angle) * s.speed;
+  s.dy = Math.sin(s.angle) * s.speed;
+  s.x += s.dx * dt;
+  s.y += s.dy * dt;
+  clampToWorld(s);
+  addTail(s);
+ }
+
+ function updatePlayer(dt) {
+  player.shieldTime = Math.max(0, player.shieldTime - dt);
+  player.magnetTime = Math.max(0, player.magnetTime - dt);
+  player.doubleTime = Math.max(0, player.doubleTime - dt);
+
+  const ps = toScreen(player.x, player.y);
+  const targetAngle = Math.atan2(mouseY - ps.y, mouseX - ps.x);
+  turnToward(player, targetAngle, 9, dt);
+
+  player.speed = player.baseSpeed;
+  if (boosting && player.length > 10) {
+   player.speed = player.baseSpeed * 1.8;
+   player.boostAcc += dt;
+   if (player.boostAcc >= 0.1) {
+    player.boostAcc -= 0.1;
+    player.length = Math.max(10, player.length - 1);
+    const drop = player.tail[0] || player;
+    foods.push({ x: drop.x, y: drop.y, size: 12, color: player.color, type: 'normal', eaten: false });
+   }
+   if (Math.random() < 0.7) createParticles(player.x, player.y, player.color, 1, 60);
+  }
+
+  // Magnet: pull loose food toward the player
+  if (player.magnetTime > 0) {
+   const R = 240;
+   for (const f of foods) {
+    const d = distance(player.x, player.y, f.x, f.y);
+    if (d < R && d > 1) {
+     const a = Math.atan2(player.y - f.y, player.x - f.x);
+     const pull = Math.min(d, 300 * dt);
+     f.x += Math.cos(a) * pull; f.y += Math.sin(a) * pull;
+    }
+   }
+  }
+
+  moveSnake(player, dt);
+ }
+
+ function nearestFood(snake) {
+  let best = null, bestD = Infinity;
+  for (const f of foods) {
+   const d = distance(snake.x, snake.y, f.x, f.y);
+   if (d < bestD) { bestD = d; best = f; }
+  }
+  return best;
+ }
+
+ function avoidAngle(s) {
+  const look = 60;
+  const ax = s.x + Math.cos(s.angle) * look;
+  const ay = s.y + Math.sin(s.angle) * look;
+  let closest = null, cd = 48;
+
+  if (player.isAlive) {
+   for (let i = 0; i < player.tail.length; i += 3) {
+    const seg = player.tail[i];
+    const d = distance(ax, ay, seg.x, seg.y);
+    if (d < cd) { cd = d; closest = seg; }
+   }
+  }
+  for (const o of aiSnakes) {
+   if (o === s || !o.isAlive) continue;
+   const d = distance(ax, ay, o.x, o.y);
+   if (d < cd) { cd = d; closest = o; }
+  }
+  for (const h of hazards) {
+   const d = distance(ax, ay, h.x, h.y);
+   if (d < h.radius + 34) { closest = { x: h.x, y: h.y }; cd = 0; }
+  }
+  if (closest) return Math.atan2(s.y - closest.y, s.x - closest.x);
+
+  const m = 80;
+  if (ax < m || ax > world.width - m || ay < m || ay > world.height - m) {
+   return Math.atan2(world.height / 2 - s.y, world.width / 2 - s.x);
+  }
+  return null;
+ }
+
+ function pickTarget(snake) {
+  if (gameMode === 'battleRoyale' && safeZone) {
+   if (distance(snake.x, snake.y, safeZone.x, safeZone.y) > safeZone.radius * 0.8) {
+    return { x: safeZone.x, y: safeZone.y };
+   }
+  }
+  if (gameMode === 'kingOfTheHill' && kingOfTheHillArea) {
+   return {
+    x: kingOfTheHillArea.x + (Math.random() - 0.5) * kingOfTheHillArea.size * 0.4,
+    y: kingOfTheHillArea.y + (Math.random() - 0.5) * kingOfTheHillArea.size * 0.4
+   };
+  }
+  const lead = 0.35;
+  switch (difficulty) {
+   case 'easy': {
+    const f = nearestFood(snake);
+    return f ? { x: f.x, y: f.y } : null;
+   }
+   case 'hard':
+    return player.isAlive ? { x: player.x + player.dx * lead, y: player.y + player.dy * lead } : null;
+   default: {
+    if (Math.random() < 0.4 && player.isAlive) return { x: player.x + player.dx * lead, y: player.y + player.dy * lead };
+    const f = nearestFood(snake);
+    return f ? { x: f.x, y: f.y } : null;
+   }
+  }
+ }
+
+ function updateAISnakes(dt) {
+  for (const snake of aiSnakes) {
+   if (!snake.isAlive) continue;
+   snake.speed = snake.baseSpeed;
+
+   snake.repathCooldown -= dt;
+   if (snake.repathCooldown <= 0) {
+    snake.targetPos = pickTarget(snake);
+    snake.repathCooldown = 0.5 + Math.random() * 0.9;
+   }
+
+   let targetAngle;
+   const avoid = avoidAngle(snake);
+   if (avoid !== null) {
+    targetAngle = avoid;
+   } else if (difficulty === 'easy' && player.isAlive && distance(snake.x, snake.y, player.x, player.y) < 220) {
+    targetAngle = Math.atan2(snake.y - player.y, snake.x - player.x);
+   } else if (snake.targetPos) {
+    targetAngle = Math.atan2(snake.targetPos.y - snake.y, snake.targetPos.x - snake.x);
+    if (difficulty === 'hard' && player.isAlive) {
+     const dp = distance(snake.x, snake.y, player.x, player.y);
+     if (dp > 90 && dp < 420) snake.speed = snake.baseSpeed * 1.35;
+    }
+   } else {
+    snake.wanderAngle += (Math.random() - 0.5) * 0.1;
+    targetAngle = snake.wanderAngle;
+   }
+
+   turnToward(snake, targetAngle, 5, dt);
+   moveSnake(snake, dt);
+  }
+ }
+
+ // ---------- Eating (spatial grid) ----------
+ function applyFood(s, f) {
+  if (f.type === 'golden') {
+   s.length += 8;
+   if (s.isPlayer) { const g = gainScore(100); score += g; addPopup(f.x, f.y, '+' + g, '#ffd24a'); createParticles(f.x, f.y, '#ffd24a', 14); sfx(880, 0.12, 'sine', 0.06); }
+  } else if (f.type === 'length') {
+   s.length += 5;
+   if (s.isPlayer) { const g = gainScore(25); score += g; addPopup(f.x, f.y, '+' + g, '#00ffff'); createParticles(f.x, f.y, f.color, 8); sfx(720, 0.09, 'sine', 0.05); }
+  } else if (f.type === 'poison') {
+   s.length = Math.max(3, s.length - 3);
+   if (s.isPlayer) { score = Math.max(0, score - 15); addPopup(f.x, f.y, '-15', '#ff5599'); createParticles(f.x, f.y, f.color, 8); sfx(150, 0.14, 'sawtooth', 0.05, 90); }
+  } else {
+   s.length += 2;
+   if (s.isPlayer) { const g = gainScore(10); score += g; addPopup(f.x, f.y, '+' + g, '#ffffff'); createParticles(f.x, f.y, f.color, 6); sfx(480 + Math.random() * 120, 0.05, 'square', 0.035); }
+  }
+  if (!s.isPlayer) s.repathCooldown = 0;
+ }
+
+ function eatFoods() {
+  foodGrid.clear();
+  for (let i = 0; i < foods.length; i++) {
+   const f = foods[i];
+   f.eaten = false;
+   const k = ((f.x / CELL) | 0) + ',' + ((f.y / CELL) | 0);
+   let arr = foodGrid.get(k);
+   if (!arr) { arr = []; foodGrid.set(k, arr); }
+   arr.push(i);
+  }
+
+  const snakes = [];
+  if (player && player.isAlive) snakes.push(player);
+  for (const s of aiSnakes) if (s.isAlive) snakes.push(s);
+
+  for (const s of snakes) {
+   const cx = (s.x / CELL) | 0, cy = (s.y / CELL) | 0;
+   for (let gx = cx - 1; gx <= cx + 1; gx++) {
+    for (let gy = cy - 1; gy <= cy + 1; gy++) {
+     const arr = foodGrid.get(gx + ',' + gy);
+     if (!arr) continue;
+     for (const idx of arr) {
+      const f = foods[idx];
+      if (f.eaten) continue;
+      if (distance(s.x, s.y, f.x, f.y) < s.size / 2 + f.size / 2) {
+       f.eaten = true;
+       applyFood(s, f);
       }
-      ctx.setTransform(dpr,0,0,dpr,0,0);
-      bgCtx.setTransform(dpr,0,0,dpr,0,0);
-      drawBackground();
+     }
     }
-    window.addEventListener('resize', resizeCanvases);
+   }
+  }
 
-    // Background (static stars + subtle grid)
-    function drawBackground(){
-      bgCtx.clearRect(0,0,backgroundCanvas.width, backgroundCanvas.height);
-      bgCtx.fillStyle = '#141518';
-      bgCtx.fillRect(0,0,backgroundCanvas.width, backgroundCanvas.height);
-      bgCtx.fillStyle = '#2a2d33';
-      for(let i=0;i<900;i++){
-        const x = Math.random()*backgroundCanvas.width;
-        const y = Math.random()*backgroundCanvas.height;
-        const r = Math.random()*2;
-        bgCtx.beginPath(); bgCtx.arc(x,y,r,0,Math.PI*2); bgCtx.fill();
-      }
-      // subtle grid
-      bgCtx.globalAlpha = 0.08;
-      bgCtx.strokeStyle = '#00ffaa';
-      bgCtx.lineWidth = 1;
-      const step = 64; // px
-      for(let x=0; x<backgroundCanvas.width; x+=step){ bgCtx.beginPath(); bgCtx.moveTo(x,0); bgCtx.lineTo(x,backgroundCanvas.height); bgCtx.stroke(); }
-      for(let y=0; y<backgroundCanvas.height; y+=step){ bgCtx.beginPath(); bgCtx.moveTo(0,y); bgCtx.lineTo(backgroundCanvas.width,y); bgCtx.stroke(); }
-      bgCtx.globalAlpha = 1;
+  let replace = 0;
+  for (let i = foods.length - 1; i >= 0; i--) {
+   if (foods[i].eaten) { if (foods[i].type !== 'poison') replace++; foods.splice(i, 1); }
+  }
+  for (let i = 0; i < replace; i++) spawnFood();
+ }
+
+ // ---------- Power-ups ----------
+ function powerupColor(t) { return t === 'magnet' ? '#00e5ff' : t === 'shield' ? '#66aaff' : '#ffd24a'; }
+ function powerupLabel(t) { return t === 'magnet' ? 'M' : t === 'shield' ? 'S' : '2x'; }
+
+ function applyPowerup(type) {
+  if (type === 'magnet') { player.magnetTime = MAGNET_DUR; addKillFeed('Magnet activated'); sfx(600, 0.12, 'sine', 0.05, 900); }
+  else if (type === 'shield') { player.shieldTime = SHIELD_DUR; addKillFeed('Shield activated'); sfx(500, 0.14, 'triangle', 0.05, 760); }
+  else if (type === 'double') { player.doubleTime = DOUBLE_DUR; addKillFeed('2x Score activated'); sfx(700, 0.14, 'square', 0.05, 1050); }
+ }
+
+ function checkPowerups() {
+  if (!player.isAlive) return;
+  for (let i = powerups.length - 1; i >= 0; i--) {
+   const p = powerups[i];
+   if (distance(player.x, player.y, p.x, p.y) < (player.size / 2 + p.size / 2)) {
+    applyPowerup(p.type);
+    createParticles(p.x, p.y, powerupColor(p.type), 16);
+    powerups.splice(i, 1);
+   }
+  }
+ }
+
+ function drawPowerups() {
+  for (const p of powerups) {
+   if (!onScreen(p.x, p.y)) continue;
+   const c = powerupColor(p.type);
+   const r = p.size / 2 + Math.sin(p.pulse) * 2;
+   if (useGlow) { ctx.shadowColor = c; ctx.shadowBlur = 15; } else ctx.shadowBlur = 0;
+   ctx.fillStyle = c;
+   ctx.beginPath(); ctx.arc(p.x - camera.x, p.y - camera.y, r, 0, PI2); ctx.fill();
+   ctx.shadowBlur = 0;
+   ctx.fillStyle = '#08121a'; ctx.font = 'bold 13px Arial'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+   ctx.fillText(powerupLabel(p.type), p.x - camera.x, p.y - camera.y);
+   ctx.textBaseline = 'alphabetic';
+  }
+ }
+
+ // ---------- Hazards ----------
+ function drawHazards() {
+  for (const h of hazards) {
+   if (!onScreen(h.x, h.y, h.radius + 20)) continue;
+   const r = h.radius + Math.sin(h.pulse) * 3;
+   const cx = h.x - camera.x, cy = h.y - camera.y;
+   if (useGlow) { ctx.shadowColor = '#ff2e63'; ctx.shadowBlur = 18; } else ctx.shadowBlur = 0;
+   ctx.fillStyle = 'rgba(255,46,99,0.32)';
+   ctx.beginPath(); ctx.arc(cx, cy, r, 0, PI2); ctx.fill();
+   ctx.strokeStyle = '#ff2e63'; ctx.lineWidth = 3 / zoom; ctx.stroke();
+   ctx.shadowBlur = 0;
+   ctx.fillStyle = '#ff2e63';
+   for (let k = 0; k < 8; k++) {
+    const a = h.pulse * 0.5 + k * Math.PI / 4;
+    ctx.beginPath(); ctx.arc(cx + Math.cos(a) * r, cy + Math.sin(a) * r, 2.5, 0, PI2); ctx.fill();
+   }
+  }
+ }
+
+ function checkHazards() {
+  for (const h of hazards) {
+   if (player.isAlive && player.shieldTime <= 0 && distance(player.x, player.y, h.x, h.y) < h.radius + player.size / 2) {
+    endGame('lose');
+    return;
+   }
+   for (const s of aiSnakes) {
+    if (!s.isAlive) continue;
+    if (distance(s.x, s.y, h.x, h.y) < h.radius + s.size / 2) killAISnake(s);
+   }
+  }
+ }
+
+ // ---------- Battle Royale zone ----------
+ function updateSafeZone(dt) {
+  if (gameMode !== 'battleRoyale' || !safeZone) return;
+  safeZone.radius = Math.max(safeZone.min, safeZone.radius - 22 * dt);
+
+  if (player.isAlive && distance(player.x, player.y, safeZone.x, safeZone.y) > safeZone.radius) {
+   player.length -= 10 * dt;
+   if (Math.random() < 0.25) createParticles(player.x, player.y, '#ff3050', 2, 80);
+   if (player.length < 3) { endGame('lose'); return; }
+  }
+  for (const s of aiSnakes) {
+   if (!s.isAlive) continue;
+   if (distance(s.x, s.y, safeZone.x, safeZone.y) > safeZone.radius) {
+    s.length -= 14 * dt;
+    if (s.length < 3) killAISnake(s);
+   }
+  }
+ }
+
+ function drawSafeZone() {
+  if (gameMode !== 'battleRoyale' || !safeZone) return;
+  const cx = safeZone.x - camera.x, cy = safeZone.y - camera.y, r = safeZone.radius;
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(0, 0, visW(), visH());
+  ctx.moveTo(cx + r, cy);
+  ctx.arc(cx, cy, r, 0, PI2);
+  ctx.fillStyle = 'rgba(255,40,80,0.12)';
+  ctx.fill('evenodd');
+  ctx.strokeStyle = 'rgba(90,190,255,0.85)';
+  ctx.lineWidth = 4 / zoom;
+  ctx.beginPath(); ctx.arc(cx, cy, r, 0, PI2); ctx.stroke();
+  ctx.restore();
+ }
+
+ // ---------- Combat ----------
+ function killAISnake(snake) {
+  if (!snake.isAlive) return;
+  snake.isAlive = false;
+  createParticles(snake.x, snake.y, snake.color, 22);
+  const drops = Math.min(12, Math.floor(snake.length));
+  for (let i = 0; i < drops; i++) {
+   foods.push({
+    x: snake.x + (Math.random() - 0.5) * 40,
+    y: snake.y + (Math.random() - 0.5) * 40,
+    size: 12, color: snake.color, type: 'normal', eaten: false
+   });
+  }
+ }
+
+ function playerKill(snake) {
+  killAISnake(snake);
+  const g = gainScore(50);
+  score += g;
+  player.length += 3;
+  addPopup(snake.x, snake.y, '+' + g, '#ffd166');
+  addKillFeed('You devoured ' + snake.name);
+  shake = Math.max(shake, 6);
+  sfx(300, 0.12, 'square', 0.06, 520);
+ }
+
+ function checkSnakeCollisions() {
+  if (!player.isAlive) return;
+  const shielded = player.shieldTime > 0;
+
+  for (let i = 0; i < aiSnakes.length; i++) {
+   const snake = aiSnakes[i];
+   if (!snake.isAlive) continue;
+
+   if (distance(player.x, player.y, snake.x, snake.y) < (player.size / 2 + snake.size / 2) + 2) {
+    if (shielded || player.length >= snake.length) { playerKill(snake); }
+    else { endGame('lose'); return; }
+    continue;
+   }
+
+   for (const seg of snake.tail) {
+    if (distance(player.x, player.y, seg.x, seg.y) < (player.size / 2 + snake.size / 2)) {
+     if (shielded) break;         // pass through while shielded
+     endGame('lose');
+     return;
     }
+   }
 
-    // Input
-    canvas.addEventListener('mousemove', e => { mouseX = e.clientX; mouseY = e.clientY; });
-    document.addEventListener('keydown', (e)=>{
-      if(e.key === 'Escape') togglePause();
-      if(e.key.toLowerCase() === 'r') initGame();
-    });
-
-    function togglePause(){
-      if(!player || !player.isAlive) return;
-      paused = !paused;
-      pauseOverlay.style.display = paused ? 'block' : 'none';
+   for (const seg of player.tail) {
+    if (distance(snake.x, snake.y, seg.x, seg.y) < (snake.size / 2 + player.size / 2)) {
+     playerKill(snake);
+     break;
     }
+   }
 
-    resumeBtn.addEventListener('click', ()=>{ if(paused) togglePause(); });
-    restartBtn2.addEventListener('click', ()=> initGame());
-    menuButtonDeath.addEventListener('click', goToMenu);
-    menuButtonPause.addEventListener('click', goToMenu);
-
-    // Init
-    playButton.addEventListener('click', initGame);
-    restartButton.addEventListener('click', initGame);
-
-    function goToMenu(){
-      cancelAnimationFrame(gameLoopID);
-      canvas.style.display = 'none';
-      backgroundCanvas.style.display = 'none';
-      deathScreen.style.display = 'none';
-      pauseOverlay.style.display = 'none';
-      startScreen.style.display = 'block';
+   if (difficulty !== 'easy') {
+    for (let j = i + 1; j < aiSnakes.length; j++) {
+     const other = aiSnakes[j];
+     if (!other.isAlive) continue;
+     if (distance(snake.x, snake.y, other.x, other.y) < (snake.size / 2 + other.size / 2)) {
+      if (snake.length >= other.length) killAISnake(other);
+      else killAISnake(snake);
+     }
     }
+   }
+  }
+ }
 
-    function initGame(){
-      if(gameLoopID) cancelAnimationFrame(gameLoopID);
-      particles.length = 0; paused = false; pauseOverlay.style.display = 'none';
-      deathScreen.style.display = 'none';
+ function cleanupSnakes() {
+  aiSnakes = aiSnakes.filter(s => s.isAlive);
+  if (gameMode === 'battleRoyale') return; // last one standing — no respawns
+  const target = gameMode === 'kingOfTheHill' ? 6 : maxAISnakes;
+  while (aiSnakes.length < target) spawnAISnake(randomName());
+ }
 
-      difficulty = difficultySelect.value;
-      gameMode = gameModeSelect.value;
-      snakeColor = snakeColorInput.value;
+ // ---------- Camera / modes ----------
+ function updateCamera() {
+  const vw = visW(), vh = visH();
+  camera.x = player.x - vw / 2;
+  camera.y = player.y - vh / 2;
+  camera.x = Math.max(0, Math.min(camera.x, Math.max(0, world.width - vw)));
+  camera.y = Math.max(0, Math.min(camera.y, Math.max(0, world.height - vh)));
+ }
 
-      player = {
-        name: (playerNameInput.value || 'Player').trim(),
-        x: Math.random()*world.width,
-        y: Math.random()*world.height,
-        size: 10,
-        speed: 300, // units per second
-        dx: 0, dy: 0, angle: 0,
-        tail: [], length: 5,
-        color: snakeColor, glow: true,
-        isInHill: false, isAlive: true
-      };
+ function inHill(e) {
+  const half = kingOfTheHillArea.size / 2;
+  return e.x > kingOfTheHillArea.x - half && e.x < kingOfTheHillArea.x + half &&
+   e.y > kingOfTheHillArea.y - half && e.y < kingOfTheHillArea.y + half;
+ }
 
-      foods = []; aiSnakes = []; score = 0; kingOfTheHillTimer = 0;
-      kingOfTheHillArea = null; player.isInHill = false;
+ function updateKingOfTheHill(dt) {
+  if (gameMode !== 'kingOfTheHill' || !kingOfTheHillArea) return;
+  if (player.isAlive && inHill(player)) {
+   player.hillTime += dt;
+   if (player.hillTime >= kingOfTheHillDominationTime) { endGame('win'); return; }
+  } else {
+   player.hillTime = Math.max(0, player.hillTime - dt * 0.5);
+  }
+  for (const s of aiSnakes) {
+   if (!s.isAlive) continue;
+   if (inHill(s)) {
+    s.hillTime += dt;
+    if (s.hillTime >= kingOfTheHillDominationTime) { endGame('lose'); return; }
+   } else {
+    s.hillTime = Math.max(0, s.hillTime - dt * 0.5);
+   }
+  }
+ }
 
-      for(let i=0;i<110;i++) spawnFood();
+ // ---------- Rendering ----------
+ function drawEyes(s) {
+  const ang = s.angle;
+  const ex = s.x - camera.x, ey = s.y - camera.y;
+  const r = s.size / 2;
+  for (const off of [-0.5, 0.5]) {
+   const a = ang + off;
+   const px = ex + Math.cos(a) * r * 0.6;
+   const py = ey + Math.sin(a) * r * 0.6;
+   ctx.fillStyle = '#fff';
+   ctx.beginPath();
+   ctx.arc(px, py, Math.max(2, r * 0.4), 0, PI2);
+   ctx.fill();
+   ctx.fillStyle = '#000';
+   ctx.beginPath();
+   ctx.arc(px + Math.cos(ang) * r * 0.12, py + Math.sin(ang) * r * 0.12, Math.max(1, r * 0.2), 0, PI2);
+   ctx.fill();
+  }
+ }
 
-      // AI spawn
-      const initialAISnakes = (gameMode !== 'kingOfTheHill') ? maxAISnakes : 1;
-      for(let i=0;i<initialAISnakes;i++) spawnAISnake(aiNames[i % aiNames.length]);
+ function drawSnake(s) {
+  const pts = s.tail;
+  // Coarse off-screen cull (head + two body samples)
+  const mid = pts.length ? pts[(pts.length / 2) | 0] : null;
+  if (!onScreen(s.x, s.y, s.size + 60) &&
+   !(pts.length && onScreen(pts[0].x, pts[0].y, s.size + 60)) &&
+   !(mid && onScreen(mid.x, mid.y, s.size + 60))) return;
 
-      // Difficulty scaling
-      aiAggression = (difficulty === 'easy') ? 0.6 : (difficulty === 'hard' ? 1.5 : 1);
+  ctx.lineJoin = 'round';
+  ctx.lineCap = 'round';
 
-      // KOTH setup
-      if(gameMode === 'kingOfTheHill'){
-        kingOfTheHillArea = {
-          x: Math.random()*(world.width-400)+200,
-          y: Math.random()*(world.height-400)+200,
-          size: 420
-        };
-      }
+  // Build the spine once (tail -> head) and stroke it as one smooth tube
+  ctx.beginPath();
+  if (pts.length) {
+   ctx.moveTo(pts[0].x - camera.x, pts[0].y - camera.y);
+   for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x - camera.x, pts[i].y - camera.y);
+   ctx.lineTo(s.x - camera.x, s.y - camera.y);
+  } else {
+   ctx.moveTo(s.x - camera.x, s.y - camera.y);
+   ctx.lineTo(s.x - camera.x + 0.1, s.y - camera.y);
+  }
 
-      startScreen.style.display = 'none';
-      canvas.style.display = 'block';
-      backgroundCanvas.style.display = 'block';
+  if (s.glow && useGlow) { ctx.shadowColor = s.color; ctx.shadowBlur = 14; }
+  else ctx.shadowBlur = 0;
+  ctx.strokeStyle = s.color;
+  ctx.lineWidth = s.size;
+  ctx.stroke();
+  ctx.shadowBlur = 0;
 
-      resizeCanvases();
-      lastTime = performance.now();
-      gameLoop();
-    }
+  // Glossy highlight down the spine
+  ctx.strokeStyle = 'rgba(255,255,255,0.26)';
+  ctx.lineWidth = Math.max(1, s.size * 0.4);
+  ctx.stroke();
 
-    // Entities
-    function spawnFood(type='normal'){
-      let size = 12, color = `hsl(${Math.random()*360}, 70%, 60%)`;
-      if(type==='length'){ size = 18; color = '#00ffff'; }
-      else if(type==='poison'){ size = 10; color = '#ff00ff'; }
-      foods.push({ x: Math.random()*world.width, y: Math.random()*world.height, size, color, type });
-    }
+  // Solid head cap for the eyes to sit on
+  ctx.fillStyle = s.color;
+  ctx.beginPath();
+  ctx.arc(s.x - camera.x, s.y - camera.y, s.size / 2 + 1, 0, PI2);
+  ctx.fill();
 
-    function spawnAISnake(name){
-      let ok=false, x=0, y=0;
-      while(!ok){
-        x = Math.random()*world.width; y = Math.random()*world.height; ok=true;
-        if(player && distance(player.x,player.y,x,y)<240) { ok=false; continue; }
-        for(const s of aiSnakes){ if(distance(s.x,s.y,x,y)<120){ ok=false; break; } }
-      }
-      const speed = (difficulty==='hard'? 220 : 180);
-      const ai = {
-        name, x, y, size: 10, speed,
-        dx: 0, dy: 0, angle: Math.random()*Math.PI*2,
-        tail: [], length: 5,
-        color: `hsl(${Math.random()*360}, 70%, 50%)`, glow: false,
-        target: null, isAlive: true,
-        repathCooldown: rand(0.4, 1.2) // seconds
-      };
-      aiSnakes.push(ai);
-    }
+  if (s.isPlayer && player.shieldTime > 0) {
+   ctx.strokeStyle = 'rgba(102,170,255,0.85)';
+   ctx.lineWidth = 3 / zoom;
+   ctx.beginPath();
+   ctx.arc(s.x - camera.x, s.y - camera.y, s.size / 2 + 7, 0, PI2);
+   ctx.stroke();
+  }
 
-    // Updates
-    function updatePlayer(dt){
-      // Smooth steering toward mouse
-      const target = Math.atan2(mouseY - (player.y - camera.y), mouseX - (player.x - camera.x));
-      const turnRate = 10; // higher = snappier
-      const diff = Math.atan2(Math.sin(target - player.angle), Math.cos(target - player.angle));
-      player.angle += diff * Math.min(1, turnRate * dt);
+  drawEyes(s);
+ }
 
-      player.dx = Math.cos(player.angle) * player.speed;
-      player.dy = Math.sin(player.angle) * player.speed;
+ function drawFoods() {
+  for (const food of foods) {
+   if (!onScreen(food.x, food.y)) continue;
+   if (food.type !== 'normal' && useGlow) { ctx.shadowColor = food.color; ctx.shadowBlur = 10; }
+   else ctx.shadowBlur = 0;
+   ctx.fillStyle = food.color;
+   ctx.beginPath();
+   ctx.arc(food.x - camera.x, food.y - camera.y, food.size / 2, 0, PI2);
+   ctx.fill();
+  }
+  ctx.shadowBlur = 0;
+ }
 
-      player.x += player.dx * dt;
-      player.y += player.dy * dt;
-      wrapAround(player);
+ function drawKingOfTheHill() {
+  if (gameMode !== 'kingOfTheHill' || !kingOfTheHillArea) return;
+  const x = kingOfTheHillArea.x - camera.x - kingOfTheHillArea.size / 2;
+  const y = kingOfTheHillArea.y - camera.y - kingOfTheHillArea.size / 2;
+  ctx.fillStyle = 'rgba(255, 255, 0, 0.15)';
+  ctx.fillRect(x, y, kingOfTheHillArea.size, kingOfTheHillArea.size);
+  ctx.strokeStyle = 'yellow';
+  ctx.lineWidth = 2 / zoom;
+  ctx.strokeRect(x, y, kingOfTheHillArea.size, kingOfTheHillArea.size);
+  ctx.fillStyle = 'white';
+  ctx.font = '20px Arial';
+  ctx.textAlign = 'center';
+  ctx.fillText(`Hold this zone for ${kingOfTheHillDominationTime}s`, kingOfTheHillArea.x - camera.x, y - 10);
+ }
 
-      // Tail
-      player.tail.push({ x: player.x, y: player.y });
-      while(player.tail.length > player.length){ player.tail.shift(); }
-    }
+ function drawLabels() {
+  ctx.textAlign = 'center';
+  for (const s of aiSnakes) {
+   if (!s.isAlive || !onScreen(s.x, s.y, 40)) continue;
+   const p = toScreen(s.x, s.y);
+   const r = (s.size / 2) * zoom;
+   ctx.font = '12px Arial';
+   ctx.fillStyle = 'rgba(255,255,255,0.85)';
+   ctx.fillText(s.name, p.x, p.y - r - 6);
+  }
+  if (player && player.isAlive) {
+   const p = toScreen(player.x, player.y);
+   const r = (player.size / 2) * zoom;
+   ctx.font = 'bold 13px Arial';
+   ctx.fillStyle = '#fff';
+   ctx.fillText(player.name, p.x, p.y - r - 7);
+  }
+ }
 
-    function updateAISnakes(dt){
-      for(const s of aiSnakes){ if(!s.isAlive) continue;
-        s.repathCooldown -= dt;
-        if(s.repathCooldown <= 0){
-          s.repathCooldown = rand(0.5, 1.3);
-          // Acquire target by difficulty
-          if(difficulty==='easy'){
-            s.target = aiSnakes[Math.floor(Math.random()*aiSnakes.length)] || null;
-            if(s.target === s) s.target = null;
-          } else if(difficulty==='normal'){
-            s.target = (Math.random()<0.5) ? player : (aiSnakes[Math.floor(Math.random()*aiSnakes.length)]||player);
-            if(s.target===s) s.target = player;
-          } else { s.target = player; }
-        }
-        // Move toward target or wander
-        if(s.target){
-          const angle = Math.atan2(s.target.y - s.y, s.target.x - s.x);
-          // slight smoothing
-          const diff = Math.atan2(Math.sin(angle - s.angle), Math.cos(angle - s.angle));
-          s.angle += diff * Math.min(1, 6 * dt);
-        }
-        s.dx = Math.cos(s.angle) * s.speed * aiAggression;
-        s.dy = Math.sin(s.angle) * s.speed * aiAggression;
-        s.x += s.dx * dt; s.y += s.dy * dt; wrapAround(s);
+ // ---------- Particles + popups ----------
+ function createParticles(x, y, color, count = 10, speed = 180) {
+  count = Math.round(count * particleScale);
+  for (let i = 0; i < count; i++) {
+   particles.push({
+    x, y, size: Math.random() * 3 + 2, color,
+    dx: (Math.random() - 0.5) * speed, dy: (Math.random() - 0.5) * speed, life: 1
+   });
+  }
+ }
 
-        s.tail.push({ x: s.x, y: s.y });
-        while(s.tail.length > s.length){ s.tail.shift(); }
-      }
-    }
+ function updateParticles(dt) {
+  particles = particles.filter(p => {
+   p.x += p.dx * dt; p.y += p.dy * dt; p.life -= dt * 1.6;
+   return p.life > 0;
+  });
+ }
 
-    // Camera follows player, clamped to world
-    function updateCamera(){
-      const dpr = window.devicePixelRatio || 1;
-      camera.x = player.x - canvas.width / (2*dpr);
-      camera.y = player.y - canvas.height / (2*dpr);
-      camera.x = Math.max(0, Math.min(camera.x, world.width - innerWidth));
-      camera.y = Math.max(0, Math.min(camera.y, world.height - innerHeight));
-    }
+ function drawParticles() {
+  for (const p of particles) {
+   if (!onScreen(p.x, p.y)) continue;
+   ctx.globalAlpha = Math.max(0, p.life);
+   ctx.fillStyle = p.color;
+   ctx.beginPath();
+   ctx.arc(p.x - camera.x, p.y - camera.y, p.size, 0, PI2);
+   ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+ }
 
-    function updateKingOfTheHill(dt){
-      if(gameMode !== 'kingOfTheHill' || !kingOfTheHillArea) return;
-      const inHill = (
-        player.x > kingOfTheHillArea.x - kingOfTheHillArea.size/2 &&
-        player.x < kingOfTheHillArea.x + kingOfTheHillArea.size/2 &&
-        player.y > kingOfTheHillArea.y - kingOfTheHillArea.size/2 &&
-        player.y < kingOfTheHillArea.y + kingOfTheHillArea.size/2
-      );
-      if(inHill){
-        if(!player.isInHill){ player.isInHill = true; kingOfTheHillTimer = 0; }
-        kingOfTheHillTimer += dt;
-        if(kingOfTheHillTimer >= kingOfTheHillDominationTime){ endGame(); }
-      } else { player.isInHill = false; }
-    }
+ function addPopup(x, y, text, color) { popups.push({ x, y, text, color, life: 1 }); }
+ function updatePopups(dt) { popups = popups.filter(p => { p.y -= 40 * dt; p.life -= dt * 1.3; return p.life > 0; }); }
+ function drawPopups() {
+  ctx.textAlign = 'center';
+  ctx.font = 'bold 16px Arial';
+  for (const p of popups) {
+   const s = toScreen(p.x, p.y);
+   ctx.globalAlpha = Math.max(0, p.life);
+   ctx.fillStyle = p.color;
+   ctx.fillText(p.text, s.x, s.y);
+  }
+  ctx.globalAlpha = 1;
+ }
 
-    // Particles
-    function createParticles(x,y,color){
-      for(let i=0;i<10;i++){
-        particles.push({ x, y, size: Math.random()*3+2, color, dx: (Math.random()-.5)*180, dy: (Math.random()-.5)*180, life: 1 });
-      }
-    }
-    function updateParticles(dt){
-      particles = particles.filter(p=>{
-        p.x += p.dx * dt; p.y += p.dy * dt; p.life -= dt; return p.life>0;
-      });
-    }
+ // ---------- Kill feed ----------
+ function addKillFeed(text) { killFeed.push({ text, life: 1 }); if (killFeed.length > 5) killFeed.shift(); }
+ function updateKillFeed(dt) { for (const k of killFeed) k.life -= dt * 0.28; killFeed = killFeed.filter(k => k.life > 0); }
+ function drawKillFeed() {
+  ctx.textAlign = 'right';
+  ctx.font = '13px Arial';
+  let y = viewH - 64;
+  for (let i = killFeed.length - 1; i >= 0; i--) {
+   const k = killFeed[i];
+   ctx.globalAlpha = Math.max(0, Math.min(1, k.life));
+   ctx.fillStyle = '#fff';
+   ctx.fillText(k.text, viewW - 16, y);
+   y -= 18;
+  }
+  ctx.globalAlpha = 1;
+  ctx.textAlign = 'left';
+ }
 
-    // Collisions
-    function checkFoodCollision(){
-      for(let i=foods.length-1; i>=0; i--){
-        const f = foods[i];
-        if(distance(player.x,player.y,f.x,f.y) < (player.size/2 + f.size/2)){
-          foods.splice(i,1); score += 10; player.length += 2; createParticles(f.x,f.y,f.color);
-          if(f.type==='length') player.length += 5; else if(f.type==='poison') player.length = Math.max(3, player.length-3);
-          spawnFood();
-        }
-      }
-    }
+ // ---------- HUD / minimap / meters ----------
+ function drawHUD() {
+  ctx.shadowBlur = 0;
+  ctx.globalAlpha = 1;
+  ctx.fillStyle = '#fff';
+  ctx.font = '18px Arial';
+  ctx.textAlign = 'left';
+  ctx.fillText(`Score: ${score}`, 16, 26);
+  ctx.fillText(`Length: ${Math.floor(player.length)}`, 16, 50);
+  ctx.fillText(`Rank: ${liveRank}/${liveTotal}`, 16, 74);
 
-    function killAISnake(s){
-      if(!s.isAlive) return;
-      s.isAlive = false; createParticles(s.x, s.y, '#ff6b6b');
-      aiSnakes = aiSnakes.filter(x=>x!==s);
-      if(aiSnakes.length < maxAISnakes && gameMode !== 'kingOfTheHill') spawnAISnake(aiNames[Math.floor(Math.random()*aiNames.length)]);
-    }
+  if (gameMode === 'scoreAttack') {
+   ctx.fillStyle = scoreAttackTimer <= 10 ? '#ff5555' : '#fff';
+   ctx.fillText(`Time: ${Math.ceil(scoreAttackTimer)}s`, 16, 98);
+  } else if (gameMode === 'kingOfTheHill') {
+   ctx.fillText(`Domination: ${player.hillTime.toFixed(1)}/${kingOfTheHillDominationTime}s`, 16, 98);
+  } else if (gameMode === 'battleRoyale') {
+   const alive = aiSnakes.filter(s => s.isAlive).length + (player.isAlive ? 1 : 0);
+   ctx.fillText(`Alive: ${alive}`, 16, 98);
+  }
 
-    function checkSnakeCollisions(){
-      if(!player.isAlive) return;
-      for(let i=0;i<aiSnakes.length;i++){
-        const s = aiSnakes[i]; if(!s.isAlive) continue;
-        // head-on with player
-        if(distance(player.x,player.y,s.x,s.y) < (player.size/2 + s.size/2)) { endGame(); return; }
-        // AI vs AI (simple)
-        for(let j=i+1;j<aiSnakes.length;j++){
-          const o = aiSnakes[j]; if(!o.isAlive) continue;
-          if(distance(s.x,s.y,o.x,o.y) < (s.size/2 + o.size/2)){
-            if(difficulty!=='easy'){ Math.random()<0.5? killAISnake(s) : killAISnake(o); }
-          }
-        }
-        // Player tail vs AI head
-        for(const seg of player.tail){
-          if(distance(s.x,s.y,seg.x,seg.y) < (s.size/2 + player.size/2)) { killAISnake(s); break; }
-        }
-        // AI tail vs player head
-        for(const seg of s.tail){
-          if(distance(player.x,player.y,seg.x,seg.y) < (player.size/2 + s.size/2)) { endGame(); return; }
-        }
-      }
-    }
+  if (!soundOn) { ctx.fillStyle = '#ff8888'; ctx.font = '13px Arial'; ctx.fillText('muted (M)', 130, 26); }
+ }
 
-    // Draw
-    function drawPlayer(){
-      ctx.fillStyle = player.color;
-      // draw tail with slight taper
-      for(let i=0;i<player.tail.length;i++){
-        const seg = player.tail[i];
-        const r = player.size/2 * (0.85 + 0.15*i/player.tail.length);
-        ctx.beginPath(); ctx.arc(seg.x - camera.x, seg.y - camera.y, r, 0, Math.PI*2); ctx.fill();
-      }
-      // head (glow only on head for perf)
-      ctx.save(); ctx.shadowColor = player.color; ctx.shadowBlur = 12;
-      ctx.beginPath(); ctx.arc(player.x - camera.x, player.y - camera.y, player.size/2, 0, Math.PI*2); ctx.fill();
-      ctx.restore();
-    }
+ function drawEffects() {
+  let y = 128;
+  ctx.textAlign = 'left';
+  ctx.font = 'bold 13px Arial';
+  const eff = [];
+  if (player.shieldTime > 0) eff.push(['Shield ' + Math.ceil(player.shieldTime) + 's', '#66aaff']);
+  if (player.magnetTime > 0) eff.push(['Magnet ' + Math.ceil(player.magnetTime) + 's', '#00e5ff']);
+  if (player.doubleTime > 0) eff.push(['2x Score ' + Math.ceil(player.doubleTime) + 's', '#ffd24a']);
+  for (const [t, c] of eff) { ctx.fillStyle = c; ctx.fillText(t, 16, y); y += 20; }
+ }
 
-    function drawAISnakes(){
-      for(const s of aiSnakes){ if(!s.isAlive) continue; ctx.fillStyle = s.color;
-        for(const seg of s.tail){ ctx.beginPath(); ctx.arc(seg.x - camera.x, seg.y - camera.y, s.size/2, 0, Math.PI*2); ctx.fill(); }
-        ctx.beginPath(); ctx.arc(s.x - camera.x, s.y - camera.y, s.size/2, 0, Math.PI*2); ctx.fill();
-      }
-    }
+ function drawMinimap() {
+  const mmW = 160, mmH = 160 * (world.height / world.width);
+  const x = 16, y = viewH - mmH - 46;
+  ctx.save();
+  ctx.globalAlpha = 0.85;
+  ctx.fillStyle = 'rgba(0,0,0,0.55)';
+  ctx.fillRect(x, y, mmW, mmH);
+  ctx.strokeStyle = 'rgba(0,255,136,0.6)';
+  ctx.lineWidth = 1;
+  ctx.strokeRect(x, y, mmW, mmH);
 
-    function drawFoods(){
-      for(const f of foods){ ctx.fillStyle = f.color; ctx.beginPath(); ctx.arc(f.x - camera.x, f.y - camera.y, f.size/2, 0, Math.PI*2); ctx.fill(); }
-    }
+  const sx = mmW / world.width, sy = mmH / world.height;
+  if (kingOfTheHillArea) {
+   ctx.strokeStyle = 'rgba(255,209,102,0.9)';
+   ctx.strokeRect(
+    x + (kingOfTheHillArea.x - kingOfTheHillArea.size / 2) * sx,
+    y + (kingOfTheHillArea.y - kingOfTheHillArea.size / 2) * sy,
+    kingOfTheHillArea.size * sx, kingOfTheHillArea.size * sy);
+  }
+  if (safeZone) {
+   ctx.strokeStyle = 'rgba(90,190,255,0.9)';
+   ctx.beginPath();
+   ctx.arc(x + safeZone.x * sx, y + safeZone.y * sy, safeZone.radius * sx, 0, PI2);
+   ctx.stroke();
+  }
+  ctx.fillStyle = 'rgba(255,120,60,0.9)';
+  for (const h of hazards) ctx.fillRect(x + h.x * sx - 1.5, y + h.y * sy - 1.5, 3, 3);
 
-    function drawParticles(){
-      for(const p of particles){ ctx.globalAlpha = Math.max(0, p.life); ctx.fillStyle = p.color;
-        ctx.beginPath(); ctx.arc(p.x - camera.x, p.y - camera.y, p.size, 0, Math.PI*2); ctx.fill(); }
-      ctx.globalAlpha = 1;
-    }
+  ctx.fillStyle = 'rgba(255,80,80,0.95)';
+  for (const s of aiSnakes) { if (!s.isAlive) continue; ctx.fillRect(x + s.x * sx - 1.5, y + s.y * sy - 1.5, 3, 3); }
 
-    function drawKOTH(){
-      if(gameMode !== 'kingOfTheHill' || !kingOfTheHillArea) return;
-      ctx.fillStyle = 'rgba(255, 255, 0, 0.18)';
-      ctx.fillRect(kingOfTheHillArea.x - camera.x - kingOfTheHillArea.size/2,
-                   kingOfTheHillArea.y - camera.y - kingOfTheHillArea.size/2,
-                   kingOfTheHillArea.size, kingOfTheHillArea.size);
-      ctx.strokeStyle = '#ffd166'; ctx.lineWidth = 2;
-      ctx.strokeRect(kingOfTheHillArea.x - camera.x - kingOfTheHillArea.size/2,
-                     kingOfTheHillArea.y - camera.y - kingOfTheHillArea.size/2,
-                     kingOfTheHillArea.size, kingOfTheHillArea.size);
-      ctx.fillStyle = '#fff'; ctx.font = '16px Arial'; ctx.textAlign = 'center';
-      ctx.fillText(`Dominate for ${kingOfTheHillDominationTime}s`,
-        kingOfTheHillArea.x - camera.x,
-        kingOfTheHillArea.y - camera.y - kingOfTheHillArea.size/2 - 8);
-    }
+  ctx.fillStyle = player.color;
+  ctx.fillRect(x + player.x * sx - 2, y + player.y * sy - 2, 4, 4);
+  ctx.restore();
+ }
 
-    function drawHUD(){
-      ctx.fillStyle = '#fff'; ctx.font = '20px Arial'; ctx.textAlign = 'left';
-      ctx.fillText(`Score: ${score}` , 12, 28);
-      if(gameMode==='kingOfTheHill'){
-        ctx.fillText(`Domination: ${Math.floor(kingOfTheHillTimer)}/${kingOfTheHillDominationTime}s`, 12, 54);
-      }
-    }
+ function drawBoostMeter() {
+  if (!player) return;
+  const avail = Math.max(0, Math.min(1, (player.length - 10) / 30));
+  const w = 160, h = 10, x = viewW / 2 - w / 2, y = viewH - 26;
+  ctx.fillStyle = 'rgba(255,255,255,0.15)';
+  ctx.fillRect(x, y, w, h);
+  ctx.fillStyle = (boosting && avail > 0) ? '#00ffcc' : '#00ff66';
+  ctx.fillRect(x, y, w * avail, h);
+  ctx.strokeStyle = 'rgba(255,255,255,0.3)';
+  ctx.lineWidth = 1;
+  ctx.strokeRect(x, y, w, h);
+  ctx.fillStyle = 'rgba(255,255,255,0.6)';
+  ctx.font = '10px Arial';
+  ctx.textAlign = 'center';
+  ctx.fillText('BOOST', viewW / 2, y - 3);
+ }
 
-    // Minimap (top-left)
-    function drawMinimap(){
-      const mmW = 200, mmH = 200 * (world.height/world.width);
-      const x = 16, y = 80; // leave space for scoreboard
-      ctx.save();
-      ctx.globalAlpha = 0.9; ctx.fillStyle = 'rgba(0,0,0,0.6)'; ctx.fillRect(x, y, mmW, mmH);
-      ctx.strokeStyle = 'rgba(0,255,136,0.6)'; ctx.strokeRect(x, y, mmW, mmH);
-      const sx = mmW / world.width; const sy = mmH / world.height;
-      // hill
-      if(kingOfTheHillArea){
-        ctx.strokeStyle = 'rgba(255, 209, 102, .9)';
-        ctx.strokeRect(x + (kingOfTheHillArea.x-kingOfTheHillArea.size/2)*sx,
-                       y + (kingOfTheHillArea.y-kingOfTheHillArea.size/2)*sy,
-                       kingOfTheHillArea.size*sx, kingOfTheHillArea.size*sy);
-      }
-      // AI
-      ctx.fillStyle = 'rgba(255, 80, 80, .95)';
-      for(const s of aiSnakes){ if(!s.isAlive) continue;
-        ctx.fillRect(x + s.x*sx - 1, y + s.y*sy - 1, 2, 2);
-      }
-      // Player
-      ctx.fillStyle = 'rgba(0,255,170, .95)';
-      ctx.fillRect(x + player.x*sx - 2, y + player.y*sy - 2, 4, 4);
-      ctx.restore();
-    }
+ // ---------- Leaderboards ----------
+ function updateLiveBoard() {
+  const all = [];
+  for (const s of aiSnakes) if (s.isAlive) all.push({ name: s.name, len: Math.floor(s.length), me: false });
+  if (player && player.isAlive) all.push({ name: player.name, len: Math.floor(player.length), me: true });
+  all.sort((a, b) => b.len - a.len);
 
-    // Leaderboard
-    function updateLeaderboard(playerName, scoreVal){
-      leaderboard.push({ name: playerName, score: scoreVal });
-      leaderboard.sort((a,b)=> b.score - a.score);
-      leaderboard = leaderboard.slice(0, 10);
-      displayLeaderboard();
-      try { localStorage.setItem('leaderboard', JSON.stringify(leaderboard)); } catch {}
-    }
-    function displayLeaderboard(){
-      leaderboardList.innerHTML = '';
-      leaderboard.forEach((entry, idx)=>{
-        const isSelf = (player && entry.name === player.name);
-        const li = document.createElement('li');
-        if(isSelf) li.classList.add('player-entry');
-        li.innerHTML = `<span>${idx+1}. ${entry.name}</span><span>${entry.score}</span>`;
-        leaderboardList.appendChild(li);
-      });
-    }
+  liveTotal = all.length;
+  const idx = all.findIndex(e => e.me);
+  liveRank = idx >= 0 ? idx + 1 : liveTotal;
 
-    // Persist leaderboard
-    try{
-      const saved = localStorage.getItem('leaderboard');
-      if(saved){ leaderboard = JSON.parse(saved); displayLeaderboard(); }
-    }catch{ /* ignore */ }
+  leaderboardList.innerHTML = '';
+  all.slice(0, 10).forEach((e, i) => {
+   const li = document.createElement('li');
+   li.className = e.me ? 'player-entry' : '';
+   li.innerHTML = `<span>${i + 1}. ${e.name}</span><span>${e.len}</span>`;
+   leaderboardList.appendChild(li);
+  });
+ }
 
-    function endGame(){
-      if(!player) return;
-      player.isAlive = false;
-      canvas.style.display = 'none'; backgroundCanvas.style.display = 'none';
-      deathScreen.style.display = 'block'; finalScoreDisplay.textContent = `Score: ${score}`;
-      cancelAnimationFrame(gameLoopID);
-      updateLeaderboard(player.name, score);
-    }
+ function updateLeaderboard(name, value) {
+  leaderboard.push({ name, score: value });
+  leaderboard.sort((a, b) => b.score - a.score);
+  leaderboard = leaderboard.slice(0, 10);
+ }
 
-    // Main Loop
-    function gameLoop(now = performance.now()){
-      const dtRaw = (now - lastTime) / 1000; // seconds
-      const dt = Math.min(dtRaw, 0.033); // clamp 30 FPS worst-case
-      lastTime = now;
+ function displayLeaderboard() {
+  leaderboardList.innerHTML = '';
+  leaderboard.forEach((entry, index) => {
+   const isPlayerEntry = player && entry.name === player.name;
+   const li = document.createElement('li');
+   li.className = isPlayerEntry ? 'player-entry' : '';
+   li.innerHTML = `<span>${index + 1}. ${entry.name}</span><span>${entry.score}</span>`;
+   leaderboardList.appendChild(li);
+  });
+ }
 
-      ctx.clearRect(0,0,canvas.width, canvas.height);
+ function saveLeaderboard() { try { localStorage.setItem('leaderboard', JSON.stringify(leaderboard)); } catch (e) {} }
+ function loadLeaderboard() {
+  try { const s = localStorage.getItem('leaderboard'); if (s) { leaderboard = JSON.parse(s); displayLeaderboard(); } } catch (e) {}
+ }
 
-      if(!paused && player && player.isAlive){
-        updatePlayer(dt);
-        updateAISnakes(dt);
-        checkFoodCollision();
-        checkSnakeCollisions();
-        updateCamera();
-        updateKingOfTheHill(dt);
-        // occasional special food
-        if(Math.random() < 0.005) spawnFood('length');
-        if(Math.random() < 0.003) spawnFood('poison');
-      }
+ // ---------- Settings ----------
+ function saveSettings() {
+  try {
+   localStorage.setItem('slitherSettings', JSON.stringify({
+    name: playerNameInput.value, difficulty: difficultySelect.value,
+    mode: gameModeSelect.value, color: snakeColorInput.value,
+    soundOn, useGlow, particleScale, reduceMotion
+   }));
+  } catch (e) {}
+ }
+ function loadSettings() {
+  try {
+   const s = JSON.parse(localStorage.getItem('slitherSettings') || '{}');
+   if (s.name) playerNameInput.value = s.name;
+   if (s.difficulty) difficultySelect.value = s.difficulty;
+   if (s.mode) gameModeSelect.value = s.mode;
+   if (s.color) snakeColorInput.value = s.color;
+   if (typeof s.soundOn === 'boolean') soundOn = s.soundOn;
+   if (typeof s.useGlow === 'boolean') useGlow = s.useGlow;
+   if (typeof s.particleScale === 'number') particleScale = s.particleScale;
+   if (typeof s.reduceMotion === 'boolean') reduceMotion = s.reduceMotion;
+  } catch (e) {}
+ }
 
-      updateParticles(dt);
+ // ---------- End / pause ----------
+ function endGame(result = 'lose') {
+  if (!running) return;
+  running = false;
+  paused = false;
+  pauseOverlay.style.display = 'none';
+  player.isAlive = false;
+  createParticles(player.x, player.y, player.color, 50);
+  shake = 16;
+  sfx(300, 0.5, 'sawtooth', 0.08, 60);
 
-      // Draw order
-      drawFoods();
-      drawAISnakes();
-      if(player && player.isAlive) drawPlayer();
-      drawKOTH();
-      drawParticles();
-      if(player) { drawHUD(); drawMinimap(); }
+  const titles = {
+   lose: ['GAME OVER!', '#ff0000'],
+   win: ['YOU WIN!', '#00ff00'],
+   timeup: ["TIME'S UP!", '#ffff00']
+  };
+  const [title, color] = titles[result] || titles.lose;
+  deathTitle.textContent = title;
+  deathTitle.style.color = color;
+  deathTitle.style.textShadow = `0 0 10px ${color}`;
+  finalScoreDisplay.textContent = `Score: ${score}`;
 
-      // Paused overlay hint (DOM overlay already visible)
-      if(paused){
-        ctx.save(); ctx.fillStyle = 'rgba(0,0,0,0.25)';
-        ctx.fillRect(0,0,innerWidth, innerHeight); ctx.restore();
-      }
+  updateLeaderboard(player.name, score);
+  saveLeaderboard();
+  displayLeaderboard();
 
-      gameLoopID = requestAnimationFrame(gameLoop);
-    }
+  pendingResult = result;
+  deathAt = performance.now();
+ }
 
-    // Save leaderboard on unload
-    window.addEventListener('beforeunload', ()=>{
-      try{ localStorage.setItem('leaderboard', JSON.stringify(leaderboard)); }catch{}
-    });
+ function finalizeDeath() {
+  cancelAnimationFrame(gameLoopID);
+  gameLoopID = null;
+  pendingResult = null;
+  canvas.style.display = 'none';
+  backgroundCanvas.style.display = 'none';
+  setMobileControls(false);
+  deathScreen.style.display = 'block';
+ }
 
-    // Kick off with sized canvases so background is visible immediately if needed
-    resizeCanvases();
-  </script>
+ function togglePause() {
+  if (!running || !player || !player.isAlive) return;
+  paused = !paused;
+  pauseOverlay.style.display = paused ? 'block' : 'none';
+  if (!paused) lastTime = performance.now();
+ }
+
+ // ---------- Main loop ----------
+ function gameLoop(now) {
+  now = now || performance.now();
+  let dt = (now - lastTime) / 1000;
+  lastTime = now;
+  if (dt > 0.05) dt = 0.05;
+  if (dt < 0) dt = 0;
+  frameCount++;
+
+  if (running && !paused && player.isAlive) {
+   updatePlayer(dt);
+   updateAISnakes(dt);
+   eatFoods();
+   checkPowerups();
+   checkSnakeCollisions();
+   checkHazards();
+   cleanupSnakes();
+   if (gameMode === 'battleRoyale' && running && aiSnakes.length === 0) endGame('win');
+
+   targetZoom = Math.max(0.62, 1 - (player.length - 5) * 0.0012);
+   zoom += (targetZoom - zoom) * Math.min(1, dt * 3);
+   updateCamera();
+   updateKingOfTheHill(dt);
+   updateSafeZone(dt);
+
+   if (gameMode === 'scoreAttack') {
+    scoreAttackTimer -= dt;
+    if (scoreAttackTimer <= 0) { scoreAttackTimer = 0; endGame('timeup'); }
+   }
+
+   if (Math.random() < 0.4 * dt) spawnFood('length');
+   if (Math.random() < 0.25 * dt) spawnFood('poison');
+   if (Math.random() < 0.06 * dt) spawnFood('golden');
+   if (Math.random() < 0.15 * dt) spawnPowerup();
+
+   for (const p of powerups) p.pulse += dt * 4;
+   for (const h of hazards) h.pulse += dt * 3;
+   if (frameCount % 10 === 0) updateLiveBoard();
+  }
+
+  if (!paused) {
+   updateParticles(dt);
+   updatePopups(dt);
+   updateKillFeed(dt);
+   shake = Math.max(0, shake - shake * Math.min(1, dt * 8));
+  }
+
+  // ----- WORLD PASS -----
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.clearRect(0, 0, viewW, viewH);
+  const sh = reduceMotion ? 0 : shake;
+  const shx = (Math.random() - 0.5) * sh;
+  const shy = (Math.random() - 0.5) * sh;
+  ctx.setTransform(dpr * zoom, 0, 0, dpr * zoom, shx * dpr, shy * dpr);
+
+  drawGrid();
+  drawSafeZone();
+  drawHazards();
+  drawFoods();
+  drawPowerups();
+  for (const s of aiSnakes) if (s.isAlive) drawSnake(s);
+  if (player && player.isAlive) drawSnake(player);
+  drawKingOfTheHill();
+  drawParticles();
+
+  // ----- SCREEN PASS -----
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  drawLabels();
+  drawPopups();
+  drawKillFeed();
+  if (player) { drawHUD(); drawEffects(); drawMinimap(); drawBoostMeter(); }
+
+  if (paused) { ctx.fillStyle = 'rgba(0,0,0,0.35)'; ctx.fillRect(0, 0, viewW, viewH); }
+
+  if (!running && pendingResult && performance.now() - deathAt > 800) { finalizeDeath(); return; }
+
+  gameLoopID = requestAnimationFrame(gameLoop);
+ }
+
+ // ---------- Input ----------
+ playButton.addEventListener('click', initGame);
+ restartButton.addEventListener('click', initGame);
+ menuButton.addEventListener('click', goToMainMenu);
+ resumeBtn.addEventListener('click', () => { if (paused) togglePause(); });
+ restartBtn2.addEventListener('click', initGame);
+ pauseMenuBtn.addEventListener('click', goToMainMenu);
+ pauseBtn.addEventListener('click', togglePause);
+
+ // Options overlay
+ function setToggle(btn, on) { btn.textContent = on ? 'On' : 'Off'; btn.className = 'toggle ' + (on ? 'on' : 'off'); }
+ function refreshOptionButtons() {
+  setToggle(optSound, soundOn);
+  setToggle(optGlow, useGlow);
+  setToggle(optMotion, reduceMotion);
+  optParticles.textContent = particleScale >= 1 ? 'High' : (particleScale >= 0.5 ? 'Medium' : 'Off');
+  optParticles.className = 'toggle ' + (particleScale > 0 ? 'on' : 'off');
+ }
+ function openOptions() { refreshOptionButtons(); optionsOverlay.style.display = 'block'; }
+
+ startOptionsBtn.addEventListener('click', openOptions);
+ pauseOptionsBtn.addEventListener('click', openOptions);
+ optClose.addEventListener('click', () => { optionsOverlay.style.display = 'none'; });
+ optSound.addEventListener('click', () => { soundOn = !soundOn; if (soundOn) initAudio(); saveSettings(); refreshOptionButtons(); });
+ optGlow.addEventListener('click', () => { useGlow = !useGlow; saveSettings(); refreshOptionButtons(); });
+ optMotion.addEventListener('click', () => { reduceMotion = !reduceMotion; saveSettings(); refreshOptionButtons(); });
+ optParticles.addEventListener('click', () => { particleScale = particleScale >= 1 ? 0.5 : (particleScale >= 0.5 ? 0 : 1); saveSettings(); refreshOptionButtons(); });
+
+ canvas.addEventListener('mousemove', (e) => { mouseX = e.clientX; mouseY = e.clientY; });
+ canvas.addEventListener('mousedown', () => { boosting = true; if (running) sfx(220, 0.1, 'sine', 0.03, 440); });
+ window.addEventListener('mouseup', () => { boosting = false; });
+
+ document.addEventListener('keydown', (e) => {
+  if (e.code === 'Escape') { if (optionsOverlay.style.display === 'block') { optionsOverlay.style.display = 'none'; return; } togglePause(); }
+  if (e.code === 'Space' && running && !paused) {
+   if (!boosting) sfx(220, 0.1, 'sine', 0.03, 440);
+   boosting = true;
+   e.preventDefault();
+  }
+  if ((e.key === 'm' || e.key === 'M') && e.target.tagName !== 'INPUT') { soundOn = !soundOn; saveSettings(); refreshOptionButtons(); }
+  if ((e.key === 'r' || e.key === 'R') && e.target.tagName !== 'INPUT' &&
+   (running || pendingResult || deathScreen.style.display === 'block')) { initGame(); }
+ });
+ window.addEventListener('keyup', (e) => { if (e.code === 'Space') boosting = false; });
+
+ // Touch: canvas steers, boost button boosts
+ canvas.addEventListener('touchstart', (e) => { const t = e.touches[0]; mouseX = t.clientX; mouseY = t.clientY; e.preventDefault(); }, { passive: false });
+ canvas.addEventListener('touchmove', (e) => { const t = e.touches[0]; mouseX = t.clientX; mouseY = t.clientY; e.preventDefault(); }, { passive: false });
+ boostBtn.addEventListener('touchstart', (e) => { boosting = true; if (running) sfx(220, 0.1, 'sine', 0.03, 440); e.preventDefault(); }, { passive: false });
+ boostBtn.addEventListener('touchend', (e) => { boosting = false; e.preventDefault(); }, { passive: false });
+ boostBtn.addEventListener('mousedown', () => { boosting = true; });
+
+ // ---------- Lifecycle ----------
+ loadSettings();
+ refreshOptionButtons();
+ loadLeaderboard();
+ resizeCanvases();
+
+ document.addEventListener('visibilitychange', () => {
+  lastTime = performance.now();
+  if (document.hidden && running && !paused) togglePause();
+ });
+
+ window.addEventListener('beforeunload', () => { saveLeaderboard(); saveSettings(); });
+ window.addEventListener('resize', resizeCanvases);
+ </script>
 </body>
+
 </html>
